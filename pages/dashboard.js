@@ -10,19 +10,33 @@ export default function Dashboard() {
     fetchProducts()
   }, [])
 
-  const fetchProducts = async () => {
-    const { data } = await supabase.from('products').select('*')
-    setProducts(data || [])
-  }
+const fetchProducts = async () => {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data } = await supabase
+    .from('products')
+    .select('*')
+    .eq('user_id', user.id)
+
+  setProducts(data || [])
+}
 
   const addProduct = async () => {
-    await supabase.from('products').insert([
-      { name, price, cost: 0 }
-    ])
-    setName('')
-    setPrice('')
-    fetchProducts()
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+
+  await supabase.from('products').insert([
+    { 
+      name,
+      price,
+      cost: 0,
+      user_id: user.id
+    }
+  ])
+
+  setName('')
+  setPrice('')
+  fetchProducts()
+}
 
   return (
     <div style={{ padding: 40 }}>
