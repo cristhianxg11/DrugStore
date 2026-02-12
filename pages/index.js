@@ -20,6 +20,23 @@ export default function Home() {
     }
   }
 
+  const handleSignup = async () => {
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+  })
+
+  if (error) {
+    alert(error.message)
+  } else {
+    alert('Usuario creado correctamente')
+  }
+}
+
+<button onClick={handleSignup}>
+  Crear cuenta
+</button>
+
   return (
     <div style={{ padding: 40 }}>
       <h1>Almacén SaaS</h1>
