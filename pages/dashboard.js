@@ -38,6 +38,15 @@ const fetchProducts = async () => {
   fetchProducts()
 }
 
+const handleLogout = async () => {
+  await supabase.auth.signOut()
+  window.location.href = '/'
+}
+
+<button onClick={handleLogout}>
+  Cerrar sesión
+</button>
+  
   return (
     <div style={{ padding: 40 }}>
       <h1>Dashboard</h1>
