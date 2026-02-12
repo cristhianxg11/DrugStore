@@ -33,10 +33,6 @@ export default function Home() {
   }
 }
 
-<button onClick={handleSignup}>
-  Crear cuenta
-</button>
-
   return (
     <div style={{ padding: 40 }}>
       <h1>Almacén SaaS</h1>
@@ -52,6 +48,7 @@ export default function Home() {
       />
       <br /><br />
       <button onClick={handleLogin}>Ingresar</button>
+      <button onClick={handleSignup}>Crear cuenta</button>
     </div>
   )
 }
