@@ -10,4 +10,20 @@ button {
   padding: 8px 12px;
   cursor: pointer;
 }
+<div style={{
+  maxWidth: '500px',
+  margin: '50px auto',
+  padding: '20px',
+  borderRadius: '10px',
+  boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+}}>
+style={{
+  padding: '10px',
+  marginTop: '10px',
+  backgroundColor: '#1f2937',
+  color: 'white',
+  border: 'none',
+  borderRadius: '5px',
+  cursor: 'pointer'
+}}
 
