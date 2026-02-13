@@ -42,29 +42,35 @@ const handleLogout = async () => {
   await supabase.auth.signOut()
   window.location.href = '/'
 }
-
-<button onClick={handleLogout}>
-  Cerrar sesión
-</button>
   
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Dashboard</h1>
+    <div style={{ maxWidth: 600, margin: '50px auto' }}>
+      <h2>Dashboard</h2>
 
-      <h3>Agregar producto</h3>
+      <button onClick={handleLogout}>Cerrar sesión</button>
+
+      <hr />
+
+      <h3>Agregar Producto</h3>
+
       <input
         placeholder="Nombre"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
+
       <input
         placeholder="Precio"
         value={price}
         onChange={(e) => setPrice(e.target.value)}
       />
+
       <button onClick={addProduct}>Guardar</button>
 
-      <h3>Productos</h3>
+      <hr />
+
+      <h3>Mis Productos</h3>
+
       <ul>
         {products.map((p) => (
           <li key={p.id}>
