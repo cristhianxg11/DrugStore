@@ -26,6 +26,9 @@ button {
   cursor: pointer;
   font-weight: 500;
 }
+const th = { padding: "12px", textAlign: "left" };
+const td = { padding: "12px", borderTop: "1px solid #eee" };
+
 
 button:hover {
   background: #1e40af;
