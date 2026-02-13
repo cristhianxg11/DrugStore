@@ -51,6 +51,9 @@ export default function Home() {
       <button onClick={handleLogin}>Ingresar</button>
       <button onClick={handleSignup}>Crear cuenta</button>
     </div>
+    <Layout>
+      <h1>Bienvenido</h1>
+    </Layout>
   )
 }
 
