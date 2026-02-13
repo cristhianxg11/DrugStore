@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabaseClient';
 import Layout from "../components/Layout";
 
 export default function Home() {
@@ -9,11 +9,7 @@ export default function Home() {
   const router = useRouter();
 
   const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       alert(error.message);
     } else {
@@ -22,11 +18,7 @@ export default function Home() {
   };
 
   const handleSignup = async () => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
+    const { error } = await supabase.auth.signUp({ email, password });
     if (error) {
       alert(error.message);
     } else {
@@ -44,24 +36,19 @@ export default function Home() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-
         <br /><br />
-
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-
         <br /><br />
-
         <button onClick={handleLogin}>Ingresar</button>
-        <button onClick={handleSignup} style={{ marginLeft: 10 }}>
-          Crear cuenta
-        </button>
+        <button onClick={handleSignup} style={{ marginLeft: 10 }}>Crear cuenta</button>
       </div>
     </Layout>
   );
 }
+
 
