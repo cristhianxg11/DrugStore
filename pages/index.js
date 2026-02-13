@@ -1,54 +1,50 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
-import Layout from "../components/Layout";
+import Link from 'next/link';
 
-export default function Home() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function Layout({ children }) {
+  const [user, setUser] = useState(null);
   const router = useRouter();
 
-  const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert(error.message);
-    } else {
-      router.push('/dashboard');
-    }
-  };
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
 
-  const handleSignup = async () => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Usuario creado correctamente');
-    }
+    getUser();
+
+    // Opcional: escuchar cambios de sesión en tiempo real
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    router.push('/');
   };
 
   return (
-    <Layout>
-      <div style={{ padding: 40 }}>
-        <h1>DrugStore</h1>
+    <div>
+      <nav style={{ padding: 20, borderBottom: '1px solid #ccc', marginBottom: 20 }}>
+        <Link href="/">Home</Link>
+        {user && (
+          <>
+            <Link href="/dashboard" style={{ marginLeft: 20 }}>Dashboard</Link>
+            <Link href="/products" style={{ marginLeft: 20 }}>Productos</Link>
+            <button onClick={handleLogout} style={{ marginLeft: 20 }}>Cerrar sesión</button>
+          </>
+        )}
+      </nav>
 
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <br /><br />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <br /><br />
-        <button onClick={handleLogin}>Ingresar</button>
-        <button onClick={handleSignup} style={{ marginLeft: 10 }}>Crear cuenta</button>
-      </div>
-    </Layout>
+      <main>{children}</main>
+    </div>
   );
 }
-
-
