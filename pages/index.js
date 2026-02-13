@@ -6,16 +6,22 @@ import Layout from "../components/Layout";
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [user, setUser] = useState(null); // estado usuario
-  const [loading, setLoading] = useState(true); // para evitar render prematuro
+  const [user, setUser] = useState(null); // Estado usuario
+  const [loading, setLoading] = useState(true); // Loading mientras valida
   const router = useRouter();
 
-  // Revisar sesión
+  // Validar usuario
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user ?? null);
-      setLoading(false);
+      try {
+        const { data } = await supabase.auth.getUser();
+        setUser(data?.user ?? null);
+      } catch (err) {
+        console.error("Error obteniendo usuario:", err);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
     checkUser();
 
@@ -38,7 +44,7 @@ export default function Home() {
     else alert('Usuario creado correctamente');
   };
 
-  // Mientras se valida la sesión, mostramos el mismo estilo de login
+  // Mientras carga, mostrar lo mismo que el login (no rompe la UI)
   if (loading) {
     return (
       <Layout>
@@ -55,7 +61,7 @@ export default function Home() {
       <div style={{ padding: 40 }}>
         <h1>DrugStore</h1>
 
-        {/* Login */}
+        {/* Inputs login */}
         <input
           placeholder="Email"
           value={email}
@@ -72,7 +78,7 @@ export default function Home() {
         <button onClick={handleLogin}>Ingresar</button>
         <button onClick={handleSignup} style={{ marginLeft: 10 }}>Crear cuenta</button>
 
-        {/* Mi negocio: solo si está logueado */}
+        {/* Mi negocio solo si hay usuario */}
         {user && (
           <div style={{ marginTop: 50, border: '1px solid #ccc', padding: 20, borderRadius: 8 }}>
             <h2>Mi negocio</h2>
