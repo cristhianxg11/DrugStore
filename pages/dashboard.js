@@ -65,7 +65,7 @@ const handleLogout = async () => {
 
       <hr />
 
-      <h3>Agregar Producto</h3>
+      <h3>Agregar Productos</h3>
 
       <input
         placeholder="Nombre"
