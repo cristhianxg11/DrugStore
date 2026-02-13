@@ -7,9 +7,14 @@ export default function Dashboard() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+useEffect(() => {
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) router.push('/'); // redirige si no logueado
+  };
+  checkUser();
+}, [router]);
+
 
   const fetchProducts = async () => {
     const { data: { user } } = await supabase.auth.getUser();
