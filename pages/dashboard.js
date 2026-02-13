@@ -56,7 +56,49 @@ const handleLogout = async () => {
     <p>128</p>
   </div>
 </div>
- 
+
+import Layout from "../components/Layout";
+
+export default function Dashboard() {
+  return (
+    <Layout>
+      <h1 style={{ marginBottom: "20px" }}>Resumen</h1>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
+
+        <div style={cardStyle}>
+          <h3>Ventas Hoy</h3>
+          <p style={bigNumber}>$ 0</p>
+        </div>
+
+        <div style={cardStyle}>
+          <h3>Ventas del Mes</h3>
+          <p style={bigNumber}>$ 0</p>
+        </div>
+
+        <div style={cardStyle}>
+          <h3>Productos</h3>
+          <p style={bigNumber}>0</p>
+        </div>
+
+      </div>
+    </Layout>
+  );
+}
+
+const cardStyle = {
+  background: "white",
+  padding: "20px",
+  borderRadius: "12px",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+};
+
+const bigNumber = {
+  fontSize: "28px",
+  fontWeight: "bold",
+  marginTop: "10px"
+};
+
   return (
     <div style={{ maxWidth: 600, margin: '50px auto' }}>
       <h2>Dashboard</h2>
