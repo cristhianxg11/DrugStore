@@ -42,7 +42,21 @@ const handleLogout = async () => {
   await supabase.auth.signOut()
   window.location.href = '/'
 }
-  
+
+<div class="container">
+  <h2>Resumen</h2>
+
+  <div class="card">
+    <h3>Ventas Hoy</h3>
+    <p>$ 24.500</p>
+  </div>
+
+  <div class="card">
+    <h3>Productos Activos</h3>
+    <p>128</p>
+  </div>
+</div>
+ 
   return (
     <div style={{ maxWidth: 600, margin: '50px auto' }}>
       <h2>Dashboard</h2>
