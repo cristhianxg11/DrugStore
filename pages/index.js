@@ -54,6 +54,6 @@ export default function Home() {
     <Layout>
       <h1>Bienvenido</h1>
     </Layout>
-  )
+  );
 }
 
