@@ -1,53 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
-import Link from 'next/link';
+import Layout from "../components/Layout";
 
-export default function Layout({ children }) {
-  const [user, setUser] = useState(null);
+export default function Home() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const router = useRouter();
 
+  // ✅ Protección de acceso
   useEffect(() => {
-    const fetchUser = async () => {
+    const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      if (!user) {
+        router.push('/'); // o a '/login' si tenés una página de login separada
+      }
     };
-    fetchUser();
+    checkUser();
+  }, [router]);
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push('/');
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      alert(error.message);
+    } else {
+      router.push('/dashboard');
+    }
   };
 
-  // Función para navegación segura
-  const navigate = (path) => {
-    if (user) {
-      router.push(path);
+  const handleSignup = async () => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      alert(error.message);
     } else {
-      alert("Debes iniciar sesión para acceder a esta sección");
+      alert('Usuario creado correctamente');
     }
   };
 
   return (
-    <div>
-      <nav style={{ padding: 20, borderBottom: '1px solid #ccc', marginBottom: 20 }}>
-        <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => router.push('/')}>Home</span>
-        <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => navigate('/dashboard')}>Dashboard</span>
-        <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => navigate('/products')}>Productos</span>
-        {user && (
-          <button onClick={handleLogout} style={{ marginLeft: 20 }}>Cerrar sesión</button>
-        )}
-      </nav>
+    <Layout>
+      <div style={{ padding: 40 }}>
+        <h1>DrugStore</h1>
 
-      <main>{children}</main>
-    </div>
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <br /><br />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <br /><br />
+        <button onClick={handleLogin}>Ingresar</button>
+        <button onClick={handleSignup} style={{ marginLeft: 10 }}>Crear cuenta</button>
+      </div>
+    </Layout>
   );
 }
