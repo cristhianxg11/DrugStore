@@ -1,96 +1,90 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import Layout from "../components/Layout";
-import { useRouter } from "next/router";
+import { useEffect, useState } from "react"
+import { supabase } from "../lib/supabaseClient"
+import Layout from "../components/Layout"
 
 export default function Sales() {
-  const [user, setUser] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const router = useRouter();
+  const [products, setProducts] = useState([])
+  const [productId, setProductId] = useState("")
+  const [quantity, setQuantity] = useState("")
+  const [sales, setSales] = useState([])
 
-  useEffect(() => {
-    init();
-  }, []);
+  const fetchData = async () => {
+    const bId = localStorage.getItem("business_id")
 
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/");
-    } else {
-      setUser(user);
-      loadProducts(user.id);
-    }
-  };
-
-  const loadProducts = async (userId) => {
-    const { data } = await supabase
+    const { data: productsData } = await supabase
       .from("products")
       .select("*")
-      .eq("user_id", userId);
+      .eq("business_id", bId)
 
-    setProducts(data || []);
-  };
-
-  const registerSale = async () => {
-    const product = products.find(p => p.id == selectedProduct);
-    if (!product) return alert("Seleccionar producto");
-
-    const total = product.price * quantity;
-
-    const { data: sale } = await supabase
+    const { data: salesData } = await supabase
       .from("sales")
-      .insert([{ user_id: user.id, total }])
-      .select()
-      .single();
+      .select("*")
+      .eq("business_id", bId)
 
-    await supabase.from("sale_items").insert([
+    setProducts(productsData || [])
+    setSales(salesData || [])
+  }
+
+  const addSale = async () => {
+    const bId = localStorage.getItem("business_id")
+
+    await supabase.from("sales").insert([
       {
-        sale_id: sale.id,
-        product_id: product.id,
-        quantity,
-        price: product.price
-      }
-    ]);
+        product_id: productId,
+        quantity: parseInt(quantity),
+        business_id: bId,
+      },
+    ])
 
-    await supabase
-      .from("products")
-      .update({ stock: product.stock - quantity })
-      .eq("id", product.id);
+    setQuantity("")
+    fetchData()
+  }
 
-    alert("Venta registrada");
-    loadProducts(user.id);
-  };
-
-  if (!user) return null;
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   return (
     <Layout>
-      <h1>Registrar Venta</h1>
+      <h1>Ventas</h1>
 
-      <select
-        value={selectedProduct}
-        onChange={(e) => setSelectedProduct(e.target.value)}
-      >
+      <select onChange={(e) => setProductId(e.target.value)}>
         <option value="">Seleccionar producto</option>
-        {products.map(p => (
+        {products.map((p) => (
           <option key={p.id} value={p.id}>
-            {p.name} - $ {p.price}
+            {p.name}
           </option>
         ))}
       </select>
 
       <input
-        type="number"
+        placeholder="Cantidad"
         value={quantity}
-        onChange={(e) => setQuantity(parseInt(e.target.value))}
+        onChange={(e) => setQuantity(e.target.value)}
+        style={{ marginLeft: 10 }}
       />
 
-      <button onClick={registerSale}>
-        Registrar Venta
+      <button onClick={addSale} style={{ marginLeft: 10 }}>
+        Registrar venta
       </button>
+
+      <table border="1" cellPadding="10" style={{ marginTop: 20 }}>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sales.map((s) => (
+            <tr key={s.id}>
+              <td>{s.product_id}</td>
+              <td>{s.quantity}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </Layout>
-  );
+  )
 }
+
