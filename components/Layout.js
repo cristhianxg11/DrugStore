@@ -23,24 +23,45 @@ export default function Layout({ children }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
     router.push('/');
   };
 
   return (
-    <div>
-      <nav style={{ padding: 20, borderBottom: '1px solid #ccc', marginBottom: 20 }}>
-        <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => router.push('/')}>Home</span>
+    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Arial, sans-serif' }}>
+      
+      {/* Sidebar */}
+      <aside style={{
+        width: 220,
+        background: '#2c3e50',
+        color: 'white',
+        padding: '20px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        <h2 style={{ textAlign: 'center' }}>DrugStore</h2>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none', padding: '5px 10px' }}>Home</Link>
         {user && (
           <>
-            <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => router.push('/dashboard')}>Dashboard</span>
-            <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => router.push('/products')}>Productos</span>
-            <button onClick={handleLogout} style={{ marginLeft: 20 }}>Cerrar sesión</button>
+            <Link href="/dashboard" style={{ color: 'white', textDecoration: 'none', padding: '5px 10px' }}>Dashboard</Link>
+            <Link href="/products" style={{ color: 'white', textDecoration: 'none', padding: '5px 10px' }}>Productos</Link>
+            <button onClick={handleLogout} style={{
+              marginTop: '20px',
+              padding: '8px 12px',
+              background: '#e74c3c',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              borderRadius: '4px'
+            }}>Cerrar sesión</button>
           </>
         )}
-      </nav>
+      </aside>
 
-      <main>{children}</main>
+      {/* Main content */}
+      <main style={{ flex: 1, padding: 40, background: '#ecf0f1' }}>
+        {children}
+      </main>
     </div>
   );
 }
