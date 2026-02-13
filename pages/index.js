@@ -6,13 +6,16 @@ import Layout from "../components/Layout";
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null); // estado usuario
+  const [loading, setLoading] = useState(true); // para evitar render prematuro
   const router = useRouter();
 
+  // Revisar sesión
   useEffect(() => {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      setUser(user ?? null);
+      setLoading(false);
     };
     checkUser();
 
@@ -35,11 +38,24 @@ export default function Home() {
     else alert('Usuario creado correctamente');
   };
 
+  // Mientras se valida la sesión, mostramos el mismo estilo de login
+  if (loading) {
+    return (
+      <Layout>
+        <div style={{ padding: 40 }}>
+          <h1>DrugStore</h1>
+          <p>Cargando...</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div style={{ padding: 40 }}>
         <h1>DrugStore</h1>
 
+        {/* Login */}
         <input
           placeholder="Email"
           value={email}
@@ -56,7 +72,7 @@ export default function Home() {
         <button onClick={handleLogin}>Ingresar</button>
         <button onClick={handleSignup} style={{ marginLeft: 10 }}>Crear cuenta</button>
 
-        {/* Mi negocio solo si usuario logueado */}
+        {/* Mi negocio: solo si está logueado */}
         {user && (
           <div style={{ marginTop: 50, border: '1px solid #ccc', padding: 20, borderRadius: 8 }}>
             <h2>Mi negocio</h2>
