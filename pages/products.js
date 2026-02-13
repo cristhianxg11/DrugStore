@@ -6,27 +6,44 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("");
+  const [cost, setCost] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [businessId, setBusinessId] = useState(null);
 
-  // 🔹 Cargar productos desde BD
-  const fetchProducts = async () => {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("id", { ascending: false });
-
-    if (!error) {
-      setProducts(data);
-    }
-  };
-
+  // 🔹 Obtener usuario y business_id
   useEffect(() => {
-    fetchProducts();
+    const getUserBusiness = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (data) {
+        setBusinessId(data.id);
+        fetchProducts(data.id);
+      }
+    };
+
+    getUserBusiness();
   }, []);
 
+  const fetchProducts = async (bId) => {
+    const { data } = await supabase
+      .from("products")
+      .select("*")
+      .eq("business_id", bId)
+      .order("created_at", { ascending: false });
+
+    if (data) setProducts(data);
+  };
+
   const addOrUpdateProduct = async () => {
-    if (!name || !price || !stock) return;
+    if (!name || !price || !cost) return;
 
     if (editingId) {
       await supabase
@@ -34,37 +51,41 @@ export default function Products() {
         .update({
           name,
           price: parseFloat(price),
-          stock: parseInt(stock),
+          cost: parseFloat(cost),
         })
         .eq("id", editingId);
 
       setEditingId(null);
     } else {
+      const { data: { user } } = await supabase.auth.getUser();
+
       await supabase.from("products").insert([
         {
           name,
           price: parseFloat(price),
-          stock: parseInt(stock),
+          cost: parseFloat(cost),
+          business_id: businessId,
+          user_id: user.id,
         },
       ]);
     }
 
     setName("");
     setPrice("");
-    setStock("");
+    setCost("");
 
-    fetchProducts(); // 🔥 recargar tabla
+    fetchProducts(businessId);
   };
 
   const deleteProduct = async (id) => {
     await supabase.from("products").delete().eq("id", id);
-    fetchProducts();
+    fetchProducts(businessId);
   };
 
   const editProduct = (product) => {
     setName(product.name);
     setPrice(product.price);
-    setStock(product.stock);
+    setCost(product.cost);
     setEditingId(product.id);
   };
 
@@ -80,17 +101,17 @@ export default function Products() {
           style={{ marginRight: "10px", padding: "6px" }}
         />
         <input
+          placeholder="Costo"
+          type="number"
+          value={cost}
+          onChange={(e) => setCost(e.target.value)}
+          style={{ marginRight: "10px", padding: "6px" }}
+        />
+        <input
           placeholder="Precio"
           type="number"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          style={{ marginRight: "10px", padding: "6px" }}
-        />
-        <input
-          placeholder="Stock"
-          type="number"
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
           style={{ marginRight: "10px", padding: "6px" }}
         />
 
@@ -113,8 +134,9 @@ export default function Products() {
         <thead>
           <tr>
             <th>Nombre</th>
+            <th>Costo</th>
             <th>Precio</th>
-            <th>Stock</th>
+            <th>Margen</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -122,8 +144,11 @@ export default function Products() {
           {products.map((product) => (
             <tr key={product.id}>
               <td>{product.name}</td>
+              <td>$ {product.cost}</td>
               <td>$ {product.price}</td>
-              <td>{product.stock}</td>
+              <td>
+                ${ (product.price - product.cost).toFixed(2) }
+              </td>
               <td>
                 <button
                   onClick={() => editProduct(product)}
