@@ -10,40 +10,50 @@ export default function Products() {
   const [editingId, setEditingId] = useState(null);
   const [businessId, setBusinessId] = useState(null);
 
-  // 🔹 Obtener usuario y business_id
+  // 🔹 Obtener usuario y business_id desde business_members
   useEffect(() => {
     const getUserBusiness = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) return;
 
-      const { data } = await supabase
-        .from("businesses")
-        .select("id")
+      const { data: member, error } = await supabase
+        .from("business_members")
+        .select("business_id")
         .eq("user_id", user.id)
         .single();
 
-      if (data) {
-        setBusinessId(data.id);
-        fetchProducts(data.id);
+      if (error) {
+        console.error("Error obteniendo business:", error);
+        return;
+      }
+
+      if (member) {
+        setBusinessId(member.business_id);
+        fetchProducts(member.business_id);
       }
     };
 
     getUserBusiness();
   }, []);
 
+  // 🔹 Cargar productos
   const fetchProducts = async (bId) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("products")
       .select("*")
       .eq("business_id", bId)
       .order("created_at", { ascending: false });
 
-    if (data) setProducts(data);
+    if (error) {
+      console.error("Error cargando productos:", error);
+    } else {
+      setProducts(data);
+    }
   };
 
+  // 🔹 Agregar o actualizar
   const addOrUpdateProduct = async () => {
-    if (!name || !price || !cost) return;
+    if (!name || !price || !cost || !businessId) return;
 
     if (editingId) {
       await supabase
@@ -77,11 +87,13 @@ export default function Products() {
     fetchProducts(businessId);
   };
 
+  // 🔹 Eliminar
   const deleteProduct = async (id) => {
     await supabase.from("products").delete().eq("id", id);
     fetchProducts(businessId);
   };
 
+  // 🔹 Editar
   const editProduct = (product) => {
     setName(product.name);
     setPrice(product.price);
@@ -93,6 +105,7 @@ export default function Products() {
     <Layout>
       <h1>Productos</h1>
 
+      {/* Formulario */}
       <div style={{ marginBottom: "20px" }}>
         <input
           placeholder="Nombre"
@@ -130,6 +143,7 @@ export default function Products() {
         </button>
       </div>
 
+      {/* Tabla */}
       <table style={{ width: "100%", background: "white" }}>
         <thead>
           <tr>
@@ -147,7 +161,7 @@ export default function Products() {
               <td>$ {product.cost}</td>
               <td>$ {product.price}</td>
               <td>
-                ${ (product.price - product.cost).toFixed(2) }
+                ${(product.price - product.cost).toFixed(2)}
               </td>
               <td>
                 <button
