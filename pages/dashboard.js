@@ -1,70 +1,69 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import Layout from "../components/Layout";
 
 export default function Dashboard() {
-  const [products, setProducts] = useState([])
-  const [name, setName] = useState('')
-  const [price, setPrice] = useState('')
+  const [products, setProducts] = useState([]);
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
 
+  // Traer productos del usuario
   useEffect(() => {
-    fetchProducts()
-  }, [])
+    fetchProducts();
+  }, []);
 
-const fetchProducts = async () => {
-  const { data: { user } } = await supabase.auth.getUser()
+  const fetchProducts = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
 
-  const { data } = await supabase
-    .from('products')
-    .select('*')
-    .eq('user_id', user.id)
+    const { data } = await supabase
+      .from('products')
+      .select('*')
+      .eq('user_id', user.id);
 
-  setProducts(data || [])
-}
+    setProducts(data || []);
+  };
 
   const addProduct = async () => {
-  const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser();
 
-  await supabase.from('products').insert([
-    { 
-      name,
-      price,
-      cost: 0,
-      user_id: user.id
-    }
-  ])
+    await supabase.from('products').insert([
+      { 
+        name,
+        price,
+        cost: 0,
+        user_id: user.id
+      }
+    ]);
 
-  setName('')
-  setPrice('')
-  fetchProducts()
-}
+    setName('');
+    setPrice('');
+    fetchProducts();
+  };
 
-const handleLogout = async () => {
-  await supabase.auth.signOut()
-  window.location.href = '/'
-}
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
 
-<div class="container">
-  <h2>Resumen</h2>
+  // Estilos
+  const cardStyle = {
+    background: "white",
+    padding: "20px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+  };
 
-  <div class="card">
-    <h3>Ventas Hoy</h3>
-    <p>$ 24.500</p>
-  </div>
+  const bigNumber = {
+    fontSize: "28px",
+    fontWeight: "bold",
+    marginTop: "10px"
+  };
 
-  <div class="card">
-    <h3>Productos Activos</h3>
-    <p>128</p>
-  </div>
-</div>
-
-export default function Dashboard() {
   return (
     <Layout>
       <h1 style={{ marginBottom: "20px" }}>Resumen</h1>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
-
         <div style={cardStyle}>
           <h3>Ventas Hoy</h3>
           <p style={bigNumber}>$ 0</p>
@@ -77,63 +76,42 @@ export default function Dashboard() {
 
         <div style={cardStyle}>
           <h3>Productos</h3>
-          <p style={bigNumber}>0</p>
+          <p style={bigNumber}>{products.length}</p>
         </div>
+      </div>
 
+      <div style={{ maxWidth: 600, margin: '50px auto' }}>
+        <button onClick={handleLogout}>Cerrar sesión</button>
+
+        <hr />
+
+        <h3>Agregar Productos</h3>
+        <input
+          placeholder="Nombre"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          style={{ marginRight: 10 }}
+        />
+        <input
+          placeholder="Precio"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+        <button onClick={addProduct} style={{ marginLeft: 10 }}>Guardar</button>
+
+        <hr />
+
+        <h3>Mis Productos</h3>
+        <ul>
+          {products.map((p) => (
+            <li key={p.id}>
+              {p.name} - ${p.price}
+            </li>
+          ))}
+        </ul>
       </div>
     </Layout>
   );
 }
 
-const cardStyle = {
-  background: "white",
-  padding: "20px",
-  borderRadius: "12px",
-  boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
-};
-
-const bigNumber = {
-  fontSize: "28px",
-  fontWeight: "bold",
-  marginTop: "10px"
-};
-
-  return (
-    <div style={{ maxWidth: 600, margin: '50px auto' }}>
-      <h2>Dashboard</h2>
-
-      <button onClick={handleLogout}>Cerrar sesión</button>
-
-      <hr />
-
-      <h3>Agregar Productos</h3>
-
-      <input
-        placeholder="Nombre"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-
-      <input
-        placeholder="Precio"
-        value={price}
-        onChange={(e) => setPrice(e.target.value)}
-      />
-
-      <button onClick={addProduct}>Guardar</button>
-
-      <hr />
-
-      <h3>Mis Productos</h3>
-
-      <ul>
-        {products.map((p) => (
-          <li key={p.id}>
-            {p.name} - ${p.price}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
 
