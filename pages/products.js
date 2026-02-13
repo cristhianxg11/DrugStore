@@ -16,3 +16,17 @@
     ))}
   </tbody>
 </table>
+<button
+  style={{
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    padding: "10px 16px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    marginBottom: "15px"
+  }}
+>
+  + Agregar Producto
+</button>
+
