@@ -6,22 +6,15 @@ import Layout from "../components/Layout";
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [user, setUser] = useState(null); // Estado usuario
-  const [loading, setLoading] = useState(true); // Loading mientras valida
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Validar usuario
   useEffect(() => {
     const checkUser = async () => {
-      try {
-        const { data } = await supabase.auth.getUser();
-        setUser(data?.user ?? null);
-      } catch (err) {
-        console.error("Error obteniendo usuario:", err);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user ?? null);
+      setLoading(false);
     };
     checkUser();
 
@@ -44,46 +37,76 @@ export default function Home() {
     else alert('Usuario creado correctamente');
   };
 
-  // Mientras carga, mostrar lo mismo que el login (no rompe la UI)
   if (loading) {
-    return (
-      <Layout>
-        <div style={{ padding: 40 }}>
-          <h1>DrugStore</h1>
-          <p>Cargando...</p>
-        </div>
-      </Layout>
-    );
+    return <Layout><p>Cargando...</p></Layout>;
   }
 
   return (
     <Layout>
-      <div style={{ padding: 40 }}>
-        <h1>DrugStore</h1>
+      <div style={{
+        maxWidth: 500,
+        margin: '0 auto',
+        padding: 40,
+        background: 'white',
+        borderRadius: 12,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+      }}>
+        <h1 style={{ textAlign: 'center', marginBottom: 30 }}>Iniciar Sesión</h1>
 
-        {/* Inputs login */}
         <input
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          style={{ width: '100%', padding: '10px', marginBottom: 20, borderRadius: 6, border: '1px solid #ccc' }}
         />
-        <br /><br />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          style={{ width: '100%', padding: '10px', marginBottom: 20, borderRadius: 6, border: '1px solid #ccc' }}
         />
-        <br /><br />
-        <button onClick={handleLogin}>Ingresar</button>
-        <button onClick={handleSignup} style={{ marginLeft: 10 }}>Crear cuenta</button>
 
-        {/* Mi negocio solo si hay usuario */}
+        <button onClick={handleLogin} style={{
+          width: '48%',
+          padding: 10,
+          borderRadius: 6,
+          border: 'none',
+          background: '#27ae60',
+          color: 'white',
+          cursor: 'pointer'
+        }}>Ingresar</button>
+
+        <button onClick={handleSignup} style={{
+          width: '48%',
+          padding: 10,
+          borderRadius: 6,
+          border: 'none',
+          background: '#2980b9',
+          color: 'white',
+          marginLeft: '4%',
+          cursor: 'pointer'
+        }}>Crear cuenta</button>
+
+        {/* Mi negocio */}
         {user && (
-          <div style={{ marginTop: 50, border: '1px solid #ccc', padding: 20, borderRadius: 8 }}>
+          <div style={{
+            marginTop: 40,
+            padding: 20,
+            background: '#f1f2f6',
+            borderRadius: 8,
+            textAlign: 'center'
+          }}>
             <h2>Mi negocio</h2>
             <p>Bienvenido, {user.email}</p>
-            <button onClick={() => router.push('/dashboard')}>Ir al Dashboard</button>
+            <button onClick={() => router.push('/dashboard')} style={{
+              padding: '10px 20px',
+              borderRadius: 6,
+              border: 'none',
+              background: '#27ae60',
+              color: 'white',
+              cursor: 'pointer'
+            }}>Ir al Dashboard</button>
           </div>
         )}
       </div>
