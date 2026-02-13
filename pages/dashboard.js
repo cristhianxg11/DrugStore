@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import Layout from "../components/Layout";
 
 export default function Dashboard() {
   const [products, setProducts] = useState([])
