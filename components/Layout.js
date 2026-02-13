@@ -1,29 +1,46 @@
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabaseClient';
+import Link from 'next/link';
+
 export default function Layout({ children }) {
+  const [user, setUser] = useState(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    fetchUser();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    router.push('/');
+  };
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f3f4f6" }}>
-      
-      {/* Sidebar */}
-      <aside style={{
-        width: "220px",
-        background: "#111827",
-        color: "white",
-        padding: "20px"
-      }}>
-        <h2 style={{ marginBottom: "30px" }}>Mi Negocio</h2>
+    <div>
+      <nav style={{ padding: 20, borderBottom: '1px solid #ccc', marginBottom: 20 }}>
+        <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => router.push('/')}>Home</span>
+        {user && (
+          <>
+            <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => router.push('/dashboard')}>Dashboard</span>
+            <span style={{ cursor: 'pointer', marginRight: 20 }} onClick={() => router.push('/products')}>Productos</span>
+            <button onClick={handleLogout} style={{ marginLeft: 20 }}>Cerrar sesión</button>
+          </>
+        )}
+      </nav>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-          <a href="/dashboard" style={{ color: "white", textDecoration: "none" }}>Dashboard</a>
-          <a href="/products" style={{ color: "white", textDecoration: "none" }}>Productos</a>
-          <a href="/sales" style={{ color: "white", textDecoration: "none" }}>Ventas</a>
-          <a href="/settings" style={{ color: "white", textDecoration: "none" }}>Configuración</a>
-        </nav>
-      </aside>
-
-      {/* Content */}
-      <main style={{ flex: 1, padding: "30px" }}>
-        {children}
-      </main>
-
+      <main>{children}</main>
     </div>
   );
 }
