@@ -1,3 +1,5 @@
+import Layout from "../components/Layout";
+
 <table style={{ width: "100%", background: "white", borderRadius: "10px" }}>
   <thead>
     <tr style={{ background: "#f9fafb" }}>
