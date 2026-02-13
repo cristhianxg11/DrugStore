@@ -35,25 +35,32 @@ export default function Home() {
 }
 
   return (
+  <Layout>
     <div style={{ padding: 40 }}>
       <h1>Almacén SaaS</h1>
+
       <input
         placeholder="Email"
         onChange={(e) => setEmail(e.target.value)}
       />
+
       <br /><br />
+
       <input
         type="password"
         placeholder="Password"
         onChange={(e) => setPassword(e.target.value)}
       />
+
       <br /><br />
+
       <button onClick={handleLogin}>Ingresar</button>
-      <button onClick={handleSignup}>Crear cuenta</button>
+      <button onClick={handleSignup} style={{ marginLeft: 10 }}>
+        Crear cuenta
+      </button>
     </div>
-    <Layout>
-      <h1>Bienvenido</h1>
-    </Layout>
-  );
+  </Layout>
+);
+
 }
 
