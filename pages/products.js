@@ -8,6 +8,7 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const router = useRouter();
 
@@ -30,30 +31,61 @@ export default function Products() {
     const { data } = await supabase
       .from("products")
       .select("*")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
     setProducts(data || []);
   };
 
-  const addProduct = async () => {
-    if (!name || !price) {
-      alert("Completar datos");
-      return;
+  const saveProduct = async () => {
+    if (!name || !price) return alert("Completar datos");
+
+    if (editingId) {
+      await supabase
+        .from("products")
+        .update({
+          name,
+          price: parseFloat(price)
+        })
+        .eq("id", editingId);
+    } else {
+      await supabase.from("products").insert([
+        {
+          name,
+          price: parseFloat(price),
+          stock: 0,
+          user_id: user.id
+        }
+      ]);
     }
 
-    await supabase.from("products").insert([
-      {
-        name,
-        price: parseFloat(price),
-        stock: 0,
-        user_id: user.id
-      }
-    ]);
+    resetForm();
+    loadProducts(user.id);
+  };
 
+  const editProduct = (product) => {
+    setEditingId(product.id);
+    setName(product.name);
+    setPrice(product.price);
+    setShowForm(true);
+  };
+
+  const deleteProduct = async (id) => {
+    if (!confirm("¿Eliminar producto?")) return;
+
+    await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+    loadProducts(user.id);
+  };
+
+  const resetForm = () => {
     setName("");
     setPrice("");
+    setEditingId(null);
     setShowForm(false);
-    loadProducts(user.id);
   };
 
   if (!user) return null;
@@ -64,75 +96,57 @@ export default function Products() {
 
       <button
         onClick={() => setShowForm(!showForm)}
-        style={{
-          background: "#2563eb",
-          color: "white",
-          border: "none",
-          padding: "10px 16px",
-          borderRadius: "8px",
-          cursor: "pointer",
-          marginBottom: "20px"
-        }}
+        style={buttonPrimary}
       >
         + Agregar Producto
       </button>
 
       {showForm && (
-        <div style={{
-          background: "white",
-          padding: "20px",
-          borderRadius: "10px",
-          marginBottom: "20px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
-        }}>
+        <div style={formCard}>
           <input
             placeholder="Nombre"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            style={{ marginRight: "10px", padding: "8px" }}
+            style={inputStyle}
           />
           <input
             placeholder="Precio"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            style={{ marginRight: "10px", padding: "8px" }}
+            style={inputStyle}
           />
-          <button
-            onClick={addProduct}
-            style={{
-              background: "#16a34a",
-              color: "white",
-              border: "none",
-              padding: "8px 12px",
-              borderRadius: "6px",
-              cursor: "pointer"
-            }}
-          >
-            Guardar
+          <button onClick={saveProduct} style={buttonSuccess}>
+            {editingId ? "Actualizar" : "Guardar"}
+          </button>
+          <button onClick={resetForm} style={buttonSecondary}>
+            Cancelar
           </button>
         </div>
       )}
 
-      <table style={{
-        width: "100%",
-        background: "white",
-        borderRadius: "10px",
-        overflow: "hidden",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
-      }}>
-        <thead style={{ background: "#f1f5f9" }}>
+      <table style={tableStyle}>
+        <thead>
           <tr>
-            <th style={{ padding: "12px" }}>Nombre</th>
-            <th style={{ padding: "12px" }}>Precio</th>
-            <th style={{ padding: "12px" }}>Stock</th>
+            <th>Nombre</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
-            <tr key={product.id}>
-              <td style={{ padding: "12px" }}>{product.name}</td>
-              <td style={{ padding: "12px" }}>$ {product.price}</td>
-              <td style={{ padding: "12px" }}>{product.stock ?? 0}</td>
+          {products.map((p) => (
+            <tr key={p.id}>
+              <td>{p.name}</td>
+              <td>$ {p.price}</td>
+              <td>{p.stock ?? 0}</td>
+              <td>
+                <button onClick={() => editProduct(p)} style={buttonSmall}>
+                  Editar
+                </button>
+                <button onClick={() => deleteProduct(p.id)} style={buttonDanger}>
+                  Eliminar
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -140,3 +154,75 @@ export default function Products() {
     </Layout>
   );
 }
+
+/* estilos */
+
+const buttonPrimary = {
+  background: "#2563eb",
+  color: "white",
+  border: "none",
+  padding: "10px 16px",
+  borderRadius: "8px",
+  cursor: "pointer",
+  marginBottom: "20px"
+};
+
+const buttonSuccess = {
+  background: "#16a34a",
+  color: "white",
+  border: "none",
+  padding: "8px 12px",
+  borderRadius: "6px",
+  cursor: "pointer",
+  marginRight: "10px"
+};
+
+const buttonSecondary = {
+  background: "#64748b",
+  color: "white",
+  border: "none",
+  padding: "8px 12px",
+  borderRadius: "6px",
+  cursor: "pointer"
+};
+
+const buttonDanger = {
+  background: "#dc2626",
+  color: "white",
+  border: "none",
+  padding: "6px 10px",
+  borderRadius: "6px",
+  cursor: "pointer",
+  marginLeft: "5px"
+};
+
+const buttonSmall = {
+  background: "#f59e0b",
+  color: "white",
+  border: "none",
+  padding: "6px 10px",
+  borderRadius: "6px",
+  cursor: "pointer"
+};
+
+const inputStyle = {
+  marginRight: "10px",
+  padding: "8px",
+  marginBottom: "10px"
+};
+
+const formCard = {
+  background: "white",
+  padding: "20px",
+  borderRadius: "10px",
+  marginBottom: "20px",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+};
+
+const tableStyle = {
+  width: "100%",
+  background: "white",
+  borderRadius: "10px",
+  overflow: "hidden",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+};
