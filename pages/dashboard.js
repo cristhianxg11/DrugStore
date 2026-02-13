@@ -1,80 +1,102 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import Layout from "../components/Layout";
-import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import Layout from "../components/Layout"
+import { useRouter } from 'next/router'
 
 export default function Dashboard() {
-  const [user, setUser] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const router = useRouter();
+  const [user, setUser] = useState(null)
+  const [productsCount, setProductsCount] = useState(0)
+  const [todaySales, setTodaySales] = useState(0)
+  const [monthSales, setMonthSales] = useState(0)
+  const router = useRouter()
 
-  // Validar sesión al cargar la página
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/'); // redirige al login si no hay sesión
-      } else {
-        setUser(user);
-        fetchProducts(user.id);
-      }
-    };
-    checkUser();
-  }, [router]);
+    checkUser()
+  }, [])
 
-  const fetchProducts = async (userId) => {
-    const { data } = await supabase
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      router.push('/')
+    } else {
+      setUser(user)
+      loadKPIs(user.id)
+    }
+  }
+
+  const loadKPIs = async (userId) => {
+    // Productos
+    const { count } = await supabase
       .from('products')
-      .select('*')
-      .eq('user_id', userId);
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
 
-    setProducts(data || []);
-  };
+    setProductsCount(count || 0)
 
-  const addProduct = async () => {
-    if (!user) return;
-    await supabase.from('products').insert([
-      { name, price, cost: 0, user_id: user.id }
-    ]);
-    setName('');
-    setPrice('');
-    fetchProducts(user.id);
-  };
+    // Ventas hoy
+    const today = new Date().toISOString().split('T')[0]
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
+    const { data: todayData } = await supabase
+      .from('sales')
+      .select('total')
+      .eq('user_id', userId)
+      .gte('created_at', today)
 
-  // Mientras no sabemos si hay usuario, no renderizamos contenido
-  if (!user) return null;
+    const totalToday = todayData?.reduce((acc, s) => acc + s.total, 0) || 0
+    setTodaySales(totalToday)
+
+    // Ventas del mes
+    const firstDayMonth = new Date()
+    firstDayMonth.setDate(1)
+    const monthStart = firstDayMonth.toISOString()
+
+    const { data: monthData } = await supabase
+      .from('sales')
+      .select('total')
+      .eq('user_id', userId)
+      .gte('created_at', monthStart)
+
+    const totalMonth = monthData?.reduce((acc, s) => acc + s.total, 0) || 0
+    setMonthSales(totalMonth)
+  }
+
+  if (!user) return null
 
   return (
     <Layout>
-      <div style={{ maxWidth: 600, margin: '50px auto' }}>
-        <h2>Dashboard</h2>
-        <button onClick={handleLogout}>Cerrar sesión</button>
+      <h1 style={{ marginBottom: 30 }}>Dashboard</h1>
 
-        <hr />
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+        gap: "20px"
+      }}>
 
-        <h3>Agregar Productos</h3>
-        <input placeholder="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
-        <input placeholder="Precio" value={price} onChange={(e) => setPrice(e.target.value)} />
-        <button onClick={addProduct}>Guardar</button>
+        <Card title="Ventas Hoy" value={`$ ${todaySales}`} />
+        <Card title="Ventas del Mes" value={`$ ${monthSales}`} />
+        <Card title="Productos Activos" value={productsCount} />
 
-        <hr />
-
-        <h3>Mis Productos</h3>
-        <ul>
-          {products.map((p) => (
-            <li key={p.id}>{p.name} - ${p.price}</li>
-          ))}
-        </ul>
       </div>
     </Layout>
-  );
+  )
 }
 
+function Card({ title, value }) {
+  return (
+    <div style={{
+      background: "white",
+      padding: "20px",
+      borderRadius: "12px",
+      boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+    }}>
+      <h3>{title}</h3>
+      <p style={{
+        fontSize: "28px",
+        fontWeight: "bold",
+        marginTop: "10px"
+      }}>{value}</p>
+    </div>
+  )
+}
 
