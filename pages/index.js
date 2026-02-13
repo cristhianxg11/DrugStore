@@ -1,115 +1,83 @@
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabaseClient';
-import Layout from "../components/Layout";
+import { useState } from "react"
+import { supabase } from "../lib/supabaseClient"
+import { useRouter } from "next/router"
 
 export default function Home() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user ?? null);
-      setLoading(false);
-    };
-    checkUser();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const router = useRouter()
 
   const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-    else router.push('/dashboard');
-  };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    const userId = data.user.id
+
+    const { data: business } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", userId)
+      .single()
+
+    localStorage.setItem("business_id", business.id)
+
+    router.push("/dashboard")
+  }
 
   const handleSignup = async () => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) alert(error.message);
-    else alert('Usuario creado correctamente');
-  };
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
 
-  if (loading) {
-    return <Layout><p>Cargando...</p></Layout>;
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    const userId = data.user.id
+
+    const { data: newBusiness } = await supabase
+      .from("businesses")
+      .insert([{ name: "Mi Negocio", owner_id: userId }])
+      .select()
+      .single()
+
+    localStorage.setItem("business_id", newBusiness.id)
+
+    alert("Usuario creado correctamente")
   }
 
   return (
-    <Layout>
-      <div style={{
-        maxWidth: 500,
-        margin: '0 auto',
-        padding: 40,
-        background: 'white',
-        borderRadius: 12,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-      }}>
-        <h1 style={{ textAlign: 'center', marginBottom: 30 }}>Iniciar Sesión</h1>
+    <div style={{ padding: 40 }}>
+      <h1>Almacén SaaS</h1>
 
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ width: '100%', padding: '10px', marginBottom: 20, borderRadius: 6, border: '1px solid #ccc' }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ width: '100%', padding: '10px', marginBottom: 20, borderRadius: 6, border: '1px solid #ccc' }}
-        />
+      <input
+        placeholder="Email"
+        onChange={(e) => setEmail(e.target.value)}
+      />
 
-        <button onClick={handleLogin} style={{
-          width: '48%',
-          padding: 10,
-          borderRadius: 6,
-          border: 'none',
-          background: '#27ae60',
-          color: 'white',
-          cursor: 'pointer'
-        }}>Ingresar</button>
+      <br /><br />
 
-        <button onClick={handleSignup} style={{
-          width: '48%',
-          padding: 10,
-          borderRadius: 6,
-          border: 'none',
-          background: '#2980b9',
-          color: 'white',
-          marginLeft: '4%',
-          cursor: 'pointer'
-        }}>Crear cuenta</button>
+      <input
+        type="password"
+        placeholder="Password"
+        onChange={(e) => setPassword(e.target.value)}
+      />
 
-        {/* Mi negocio */}
-        {user && (
-          <div style={{
-            marginTop: 40,
-            padding: 20,
-            background: '#f1f2f6',
-            borderRadius: 8,
-            textAlign: 'center'
-          }}>
-            <h2>Mi negocio</h2>
-            <p>Bienvenido, {user.email}</p>
-            <button onClick={() => router.push('/dashboard')} style={{
-              padding: '10px 20px',
-              borderRadius: 6,
-              border: 'none',
-              background: '#27ae60',
-              color: 'white',
-              cursor: 'pointer'
-            }}>Ir al Dashboard</button>
-          </div>
-        )}
-      </div>
-    </Layout>
-  );
+      <br /><br />
+
+      <button onClick={handleLogin}>Ingresar</button>
+      <button onClick={handleSignup} style={{ marginLeft: 10 }}>
+        Crear cuenta
+      </button>
+    </div>
+  )
 }
