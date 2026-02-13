@@ -13,8 +13,8 @@ export default function Products() {
     const newProduct = {
       id: Date.now(),
       name,
-      price,
-      stock
+      price: parseFloat(price),
+      stock: parseInt(stock),
     };
 
     setProducts([...products, newProduct]);
@@ -25,10 +25,8 @@ export default function Products() {
   };
 
   const adjustStock = (id, amount) => {
-    const updated = products.map((product) =>
-      product.id === id
-        ? { ...product, stock: Number(product.stock) + amount }
-        : product
+    const updated = products.map((p) =>
+      p.id === id ? { ...p, stock: p.stock + amount } : p
     );
     setProducts(updated);
   };
@@ -37,30 +35,44 @@ export default function Products() {
     <Layout>
       <h1>Productos</h1>
 
+      {/* FORMULARIO */}
       <div style={{ marginBottom: "20px" }}>
         <input
           placeholder="Nombre"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          style={{ marginRight: "10px", padding: "6px" }}
         />
         <input
           placeholder="Precio"
           type="number"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
+          style={{ marginRight: "10px", padding: "6px" }}
         />
         <input
           placeholder="Stock"
           type="number"
           value={stock}
           onChange={(e) => setStock(e.target.value)}
+          style={{ marginRight: "10px", padding: "6px" }}
         />
-
-        <button onClick={addProduct}>
+        <button
+          onClick={addProduct}
+          style={{
+            background: "#2563eb",
+            color: "white",
+            border: "none",
+            padding: "8px 14px",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
           + Agregar Producto
         </button>
       </div>
 
+      {/* TABLA */}
       <table style={{ width: "100%", background: "white" }}>
         <thead>
           <tr>
@@ -78,7 +90,12 @@ export default function Products() {
               <td>{product.stock}</td>
               <td>
                 <button onClick={() => adjustStock(product.id, 1)}>+1</button>
-                <button onClick={() => adjustStock(product.id, -1)}>-1</button>
+                <button
+                  onClick={() => adjustStock(product.id, -1)}
+                  style={{ marginLeft: "5px" }}
+                >
+                  -1
+                </button>
               </td>
             </tr>
           ))}
