@@ -1,41 +1,77 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
+import { supabase } from "../lib/supabaseClient";
 
 export default function Products() {
   const [products, setProducts] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
-  const addProduct = () => {
+  // 🔹 Cargar productos desde BD
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("id", { ascending: false });
+
+    if (!error) {
+      setProducts(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const addOrUpdateProduct = async () => {
     if (!name || !price || !stock) return;
 
-    const newProduct = {
-      id: Date.now(),
-      name,
-      price: parseFloat(price),
-      stock: parseInt(stock),
-    };
+    if (editingId) {
+      await supabase
+        .from("products")
+        .update({
+          name,
+          price: parseFloat(price),
+          stock: parseInt(stock),
+        })
+        .eq("id", editingId);
 
-    setProducts([...products, newProduct]);
+      setEditingId(null);
+    } else {
+      await supabase.from("products").insert([
+        {
+          name,
+          price: parseFloat(price),
+          stock: parseInt(stock),
+        },
+      ]);
+    }
 
     setName("");
     setPrice("");
     setStock("");
+
+    fetchProducts(); // 🔥 recargar tabla
   };
 
-  const adjustStock = (id, amount) => {
-    const updated = products.map((p) =>
-      p.id === id ? { ...p, stock: p.stock + amount } : p
-    );
-    setProducts(updated);
+  const deleteProduct = async (id) => {
+    await supabase.from("products").delete().eq("id", id);
+    fetchProducts();
+  };
+
+  const editProduct = (product) => {
+    setName(product.name);
+    setPrice(product.price);
+    setStock(product.stock);
+    setEditingId(product.id);
   };
 
   return (
     <Layout>
       <h1>Productos</h1>
 
-      {/* FORMULARIO */}
       <div style={{ marginBottom: "20px" }}>
         <input
           placeholder="Nombre"
@@ -57,10 +93,11 @@ export default function Products() {
           onChange={(e) => setStock(e.target.value)}
           style={{ marginRight: "10px", padding: "6px" }}
         />
+
         <button
-          onClick={addProduct}
+          onClick={addOrUpdateProduct}
           style={{
-            background: "#2563eb",
+            background: editingId ? "#f59e0b" : "#2563eb",
             color: "white",
             border: "none",
             padding: "8px 14px",
@@ -68,18 +105,17 @@ export default function Products() {
             cursor: "pointer",
           }}
         >
-          + Agregar Producto
+          {editingId ? "Actualizar" : "+ Agregar Producto"}
         </button>
       </div>
 
-      {/* TABLA */}
       <table style={{ width: "100%", background: "white" }}>
         <thead>
           <tr>
             <th>Nombre</th>
             <th>Precio</th>
             <th>Stock</th>
-            <th>Ajustar</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -89,12 +125,17 @@ export default function Products() {
               <td>$ {product.price}</td>
               <td>{product.stock}</td>
               <td>
-                <button onClick={() => adjustStock(product.id, 1)}>+1</button>
                 <button
-                  onClick={() => adjustStock(product.id, -1)}
-                  style={{ marginLeft: "5px" }}
+                  onClick={() => editProduct(product)}
+                  style={{ marginRight: "5px" }}
                 >
-                  -1
+                  Editar
+                </button>
+                <button
+                  onClick={() => deleteProduct(product.id)}
+                  style={{ background: "#ef4444", color: "white" }}
+                >
+                  Eliminar
                 </button>
               </td>
             </tr>
@@ -104,3 +145,4 @@ export default function Products() {
     </Layout>
   );
 }
+
