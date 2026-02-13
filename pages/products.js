@@ -1,151 +1,84 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useState } from "react";
 import Layout from "../components/Layout";
-import { useRouter } from "next/router";
 
 export default function Products() {
-  const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const router = useRouter();
+  const [stock, setStock] = useState("");
 
-  useEffect(() => {
-    checkUser();
-  }, []);
+  const addProduct = () => {
+    if (!name || !price || !stock) return;
 
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const newProduct = {
+      id: Date.now(),
+      name,
+      price,
+      stock
+    };
 
-    if (!user) {
-      router.push("/");
-    } else {
-      setUser(user);
-      loadProducts(user.id);
-    }
-  };
+    setProducts([...products, newProduct]);
 
-  const loadProducts = async (userId) => {
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    setProducts(data || []);
-  };
-
-  const saveProduct = async () => {
-    if (!name || !price) return alert("Completar datos");
-
-    if (editingId) {
-      await supabase
-        .from("products")
-        .update({
-          name,
-          price: parseFloat(price)
-        })
-        .eq("id", editingId);
-    } else {
-      await supabase.from("products").insert([
-        {
-          name,
-          price: parseFloat(price),
-          stock: 0,
-          user_id: user.id
-        }
-      ]);
-    }
-
-    resetForm();
-    loadProducts(user.id);
-  };
-
-  const editProduct = (product) => {
-    setEditingId(product.id);
-    setName(product.name);
-    setPrice(product.price);
-    setShowForm(true);
-  };
-
-  const deleteProduct = async (id) => {
-    if (!confirm("¿Eliminar producto?")) return;
-
-    await supabase
-      .from("products")
-      .delete()
-      .eq("id", id);
-
-    loadProducts(user.id);
-  };
-
-  const resetForm = () => {
     setName("");
     setPrice("");
-    setEditingId(null);
-    setShowForm(false);
+    setStock("");
   };
 
-  if (!user) return null;
+  const adjustStock = (id, amount) => {
+    const updated = products.map((product) =>
+      product.id === id
+        ? { ...product, stock: Number(product.stock) + amount }
+        : product
+    );
+    setProducts(updated);
+  };
 
   return (
     <Layout>
-      <h1 style={{ marginBottom: 20 }}>Productos</h1>
+      <h1>Productos</h1>
 
-      <button
-        onClick={() => setShowForm(!showForm)}
-        style={buttonPrimary}
-      >
-        + Agregar Producto
-      </button>
+      <div style={{ marginBottom: "20px" }}>
+        <input
+          placeholder="Nombre"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          placeholder="Precio"
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+        <input
+          placeholder="Stock"
+          type="number"
+          value={stock}
+          onChange={(e) => setStock(e.target.value)}
+        />
 
-      {showForm && (
-        <div style={formCard}>
-          <input
-            placeholder="Nombre"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={inputStyle}
-          />
-          <input
-            placeholder="Precio"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            style={inputStyle}
-          />
-          <button onClick={saveProduct} style={buttonSuccess}>
-            {editingId ? "Actualizar" : "Guardar"}
-          </button>
-          <button onClick={resetForm} style={buttonSecondary}>
-            Cancelar
-          </button>
-        </div>
-      )}
+        <button onClick={addProduct}>
+          + Agregar Producto
+        </button>
+      </div>
 
-      <table style={tableStyle}>
+      <table style={{ width: "100%", background: "white" }}>
         <thead>
           <tr>
             <th>Nombre</th>
             <th>Precio</th>
             <th>Stock</th>
-            <th>Acciones</th>
+            <th>Ajustar</th>
           </tr>
         </thead>
         <tbody>
-          {products.map((p) => (
-            <tr key={p.id}>
-              <td>{p.name}</td>
-              <td>$ {p.price}</td>
-              <td>{p.stock ?? 0}</td>
+          {products.map((product) => (
+            <tr key={product.id}>
+              <td>{product.name}</td>
+              <td>$ {product.price}</td>
+              <td>{product.stock}</td>
               <td>
-                <button onClick={() => editProduct(p)} style={buttonSmall}>
-                  Editar
-                </button>
-                <button onClick={() => deleteProduct(p.id)} style={buttonDanger}>
-                  Eliminar
-                </button>
+                <button onClick={() => adjustStock(product.id, 1)}>+1</button>
+                <button onClick={() => adjustStock(product.id, -1)}>-1</button>
               </td>
             </tr>
           ))}
@@ -154,75 +87,3 @@ export default function Products() {
     </Layout>
   );
 }
-
-/* estilos */
-
-const buttonPrimary = {
-  background: "#2563eb",
-  color: "white",
-  border: "none",
-  padding: "10px 16px",
-  borderRadius: "8px",
-  cursor: "pointer",
-  marginBottom: "20px"
-};
-
-const buttonSuccess = {
-  background: "#16a34a",
-  color: "white",
-  border: "none",
-  padding: "8px 12px",
-  borderRadius: "6px",
-  cursor: "pointer",
-  marginRight: "10px"
-};
-
-const buttonSecondary = {
-  background: "#64748b",
-  color: "white",
-  border: "none",
-  padding: "8px 12px",
-  borderRadius: "6px",
-  cursor: "pointer"
-};
-
-const buttonDanger = {
-  background: "#dc2626",
-  color: "white",
-  border: "none",
-  padding: "6px 10px",
-  borderRadius: "6px",
-  cursor: "pointer",
-  marginLeft: "5px"
-};
-
-const buttonSmall = {
-  background: "#f59e0b",
-  color: "white",
-  border: "none",
-  padding: "6px 10px",
-  borderRadius: "6px",
-  cursor: "pointer"
-};
-
-const inputStyle = {
-  marginRight: "10px",
-  padding: "8px",
-  marginBottom: "10px"
-};
-
-const formCard = {
-  background: "white",
-  padding: "20px",
-  borderRadius: "10px",
-  marginBottom: "20px",
-  boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
-};
-
-const tableStyle = {
-  width: "100%",
-  background: "white",
-  borderRadius: "10px",
-  overflow: "hidden",
-  boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
-};
