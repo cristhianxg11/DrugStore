@@ -7,34 +7,19 @@ export default function Dashboard() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
 
-  // Traer productos del usuario
   useEffect(() => {
     fetchProducts();
   }, []);
 
   const fetchProducts = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .eq('user_id', user.id);
-
+    const { data } = await supabase.from('products').select('*').eq('user_id', user.id);
     setProducts(data || []);
   };
 
   const addProduct = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-
-    await supabase.from('products').insert([
-      { 
-        name,
-        price,
-        cost: 0,
-        user_id: user.id
-      }
-    ]);
-
+    await supabase.from('products').insert([{ name, price, cost: 0, user_id: user.id }]);
     setName('');
     setPrice('');
     fetchProducts();
@@ -45,7 +30,6 @@ export default function Dashboard() {
     window.location.href = '/';
   };
 
-  // Estilos
   const cardStyle = {
     background: "white",
     padding: "20px",
@@ -113,5 +97,6 @@ export default function Dashboard() {
     </Layout>
   );
 }
+
 
 
