@@ -7,6 +7,7 @@ export default function Home() {
   const [password, setPassword] = useState("")
   const router = useRouter()
 
+  // LOGIN
   const handleLogin = async () => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -20,17 +21,23 @@ export default function Home() {
 
     const userId = data.user.id
 
-    const { data: business } = await supabase
-      .from("businesses")
-      .select("id")
-      .eq("owner_id", userId)
+    const { data: membership, error: memberError } = await supabase
+      .from("business_members")
+      .select("business_id")
+      .eq("user_id", userId)
       .single()
 
-    localStorage.setItem("business_id", business.id)
+    if (memberError) {
+      alert("No se encontró negocio asociado")
+      return
+    }
+
+    localStorage.setItem("business_id", membership.business_id)
 
     router.push("/dashboard")
   }
 
+  // SIGNUP
   const handleSignup = async () => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -44,11 +51,33 @@ export default function Home() {
 
     const userId = data.user.id
 
-    const { data: newBusiness } = await supabase
+    // Crear business
+    const { data: newBusiness, error: businessError } = await supabase
       .from("businesses")
-      .insert([{ name: "Mi Negocio", owner_id: userId }])
+      .insert([{ name: "Mi Negocio" }])
       .select()
       .single()
+
+    if (businessError) {
+      alert(businessError.message)
+      return
+    }
+
+    // Crear relación en business_members
+    const { error: memberError } = await supabase
+      .from("business_members")
+      .insert([
+        {
+          business_id: newBusiness.id,
+          user_id: userId,
+          role: "owner",
+        },
+      ])
+
+    if (memberError) {
+      alert(memberError.message)
+      return
+    }
 
     localStorage.setItem("business_id", newBusiness.id)
 
@@ -81,3 +110,4 @@ export default function Home() {
     </div>
   )
 }
+
