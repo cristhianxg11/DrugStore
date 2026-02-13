@@ -1,102 +1,49 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { useEffect, useState } from "react"
+import { supabase } from "../lib/supabaseClient"
 import Layout from "../components/Layout"
-import { useRouter } from 'next/router'
 
 export default function Dashboard() {
-  const [user, setUser] = useState(null)
-  const [productsCount, setProductsCount] = useState(0)
-  const [todaySales, setTodaySales] = useState(0)
-  const [monthSales, setMonthSales] = useState(0)
-  const router = useRouter()
+  const [totalProducts, setTotalProducts] = useState(0)
+  const [totalSales, setTotalSales] = useState(0)
 
   useEffect(() => {
-    checkUser()
-  }, [])
+    const fetchData = async () => {
+      const bId = localStorage.getItem("business_id")
 
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+      const { data: products } = await supabase
+        .from("products")
+        .select("*")
+        .eq("business_id", bId)
 
-    if (!user) {
-      router.push('/')
-    } else {
-      setUser(user)
-      loadKPIs(user.id)
+      const { data: sales } = await supabase
+        .from("sales")
+        .select("*")
+        .eq("business_id", bId)
+
+      setTotalProducts(products?.length || 0)
+      setTotalSales(sales?.length || 0)
     }
-  }
 
-  const loadKPIs = async (userId) => {
-    // Productos
-    const { count } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-
-    setProductsCount(count || 0)
-
-    // Ventas hoy
-    const today = new Date().toISOString().split('T')[0]
-
-    const { data: todayData } = await supabase
-      .from('sales')
-      .select('total')
-      .eq('user_id', userId)
-      .gte('created_at', today)
-
-    const totalToday = todayData?.reduce((acc, s) => acc + s.total, 0) || 0
-    setTodaySales(totalToday)
-
-    // Ventas del mes
-    const firstDayMonth = new Date()
-    firstDayMonth.setDate(1)
-    const monthStart = firstDayMonth.toISOString()
-
-    const { data: monthData } = await supabase
-      .from('sales')
-      .select('total')
-      .eq('user_id', userId)
-      .gte('created_at', monthStart)
-
-    const totalMonth = monthData?.reduce((acc, s) => acc + s.total, 0) || 0
-    setMonthSales(totalMonth)
-  }
-
-  if (!user) return null
+    fetchData()
+  }, [])
 
   return (
     <Layout>
-      <h1 style={{ marginBottom: 30 }}>Dashboard</h1>
+      <h1>Dashboard</h1>
 
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-        gap: "20px"
-      }}>
+      <div style={{ display: "flex", gap: 20 }}>
+        <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
+          <h3>Productos</h3>
+          <p>{totalProducts}</p>
+        </div>
 
-        <Card title="Ventas Hoy" value={`$ ${todaySales}`} />
-        <Card title="Ventas del Mes" value={`$ ${monthSales}`} />
-        <Card title="Productos Activos" value={productsCount} />
-
+        <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
+          <h3>Ventas</h3>
+          <p>{totalSales}</p>
+        </div>
       </div>
     </Layout>
   )
 }
 
-function Card({ title, value }) {
-  return (
-    <div style={{
-      background: "white",
-      padding: "20px",
-      borderRadius: "12px",
-      boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
-    }}>
-      <h3>{title}</h3>
-      <p style={{
-        fontSize: "28px",
-        fontWeight: "bold",
-        marginTop: "10px"
-      }}>{value}</p>
-    </div>
-  )
-}
 
