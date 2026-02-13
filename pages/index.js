@@ -6,35 +6,33 @@ import Layout from "../components/Layout";
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [user, setUser] = useState(null);
   const router = useRouter();
 
-  // ✅ Protección de acceso
   useEffect(() => {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/'); // o a '/login' si tenés una página de login separada
-      }
+      setUser(user);
     };
     checkUser();
-  }, [router]);
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const handleLogin = async () => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert(error.message);
-    } else {
-      router.push('/dashboard');
-    }
+    if (error) alert(error.message);
+    else router.push('/dashboard');
   };
 
   const handleSignup = async () => {
     const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Usuario creado correctamente');
-    }
+    if (error) alert(error.message);
+    else alert('Usuario creado correctamente');
   };
 
   return (
@@ -57,6 +55,15 @@ export default function Home() {
         <br /><br />
         <button onClick={handleLogin}>Ingresar</button>
         <button onClick={handleSignup} style={{ marginLeft: 10 }}>Crear cuenta</button>
+
+        {/* Mi negocio solo si usuario logueado */}
+        {user && (
+          <div style={{ marginTop: 50, border: '1px solid #ccc', padding: 20, borderRadius: 8 }}>
+            <h2>Mi negocio</h2>
+            <p>Bienvenido, {user.email}</p>
+            <button onClick={() => router.push('/dashboard')}>Ir al Dashboard</button>
+          </div>
+        )}
       </div>
     </Layout>
   );
