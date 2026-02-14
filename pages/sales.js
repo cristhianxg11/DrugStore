@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient"
 import Layout from "../components/Layout"
 
 export default function Sales() {
+  const [bId, setBId] = useState(null) // business_id desde localStorage
   const [clients, setClients] = useState([])
   const [clientName, setClientName] = useState("")
   const [selectedClient, setSelectedClient] = useState(null)
@@ -13,19 +14,24 @@ export default function Sales() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const bId = localStorage.getItem("business_id")
+  // --- Obtener business_id solo en cliente ---
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const businessId = localStorage.getItem("business_id")
+      setBId(businessId)
+    }
+  }, [])
 
-  // Cerrar sesión
+  // --- Cerrar sesión ---
   const logout = async () => {
     await supabase.auth.signOut()
     localStorage.removeItem("business_id")
     window.location.href = "/"
   }
 
-  // Cargar clientes y productos
+  // --- Cargar clientes y productos ---
   useEffect(() => {
     if (!bId) return
-
     const fetchData = async () => {
       try {
         const { data: clientsData, error: clientsError } = await supabase
@@ -47,11 +53,10 @@ export default function Sales() {
         setLoading(false)
       }
     }
-
     fetchData()
   }, [bId])
 
-  // Calcular total automáticamente
+  // --- Calcular total automáticamente ---
   useEffect(() => {
     const newTotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
     setTotal(newTotal)
@@ -91,7 +96,7 @@ export default function Sales() {
     if (selectedClient?.id === client.id) setSelectedClient(null)
   }
 
-  // --- Productos ---
+  // --- Productos para venta ---
   const addProductToSale = () => {
     if (!selectedProduct) return alert("Seleccione un producto")
     const product = productsList.find(p => p.id === selectedProduct)
@@ -138,6 +143,7 @@ export default function Sales() {
   }
 
   if (loading) return <Layout><p>Cargando...</p></Layout>
+  if (!bId) return <Layout><p>No se encontró negocio asociado</p></Layout>
 
   return (
     <Layout>
