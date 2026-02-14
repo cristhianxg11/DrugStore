@@ -11,7 +11,6 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         const bId = localStorage.getItem("business_id")
-
         if (!bId) {
           console.error("No existe business_id")
           setLoading(false)
@@ -23,20 +22,14 @@ export default function Dashboard() {
           .from("products")
           .select("id")
           .eq("business_id", bId)
-
-        if (productsError) {
-          console.error("Error al obtener productos:", productsError)
-        }
+        if (productsError) console.error("Error al obtener productos:", productsError)
 
         // Contar ventas
         const { data: sales, error: salesError } = await supabase
           .from("sales")
           .select("id")
           .eq("business_id", bId)
-
-        if (salesError) {
-          console.error("Error al obtener ventas:", salesError)
-        }
+        if (salesError) console.error("Error al obtener ventas:", salesError)
 
         setTotalProducts(products?.length || 0)
         setTotalSales(sales?.length || 0)
@@ -52,24 +45,49 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <h1>Dashboard</h1>
+      <h1 style={{ marginBottom: 20 }}>Dashboard</h1>
 
       {loading ? (
         <p>Cargando datos...</p>
       ) : (
-        <div style={{ display: "flex", gap: 20 }}>
-          <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
-            <h3>Productos</h3>
-            <p>{totalProducts}</p>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 20,
+          }}
+        >
+          {/* Tarjeta Productos */}
+          <div
+            style={{
+              flex: "1 1 200px",
+              background: "white",
+              padding: 20,
+              borderRadius: 12,
+              boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+              textAlign: "center",
+            }}
+          >
+            <h3 style={{ marginBottom: 10, color: "#1976d2" }}>Productos</h3>
+            <p style={{ fontSize: 28, fontWeight: "bold" }}>{totalProducts}</p>
           </div>
 
-          <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
-            <h3>Ventas</h3>
-            <p>{totalSales}</p>
+          {/* Tarjeta Ventas */}
+          <div
+            style={{
+              flex: "1 1 200px",
+              background: "white",
+              padding: 20,
+              borderRadius: 12,
+              boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+              textAlign: "center",
+            }}
+          >
+            <h3 style={{ marginBottom: 10, color: "#1976d2" }}>Ventas</h3>
+            <p style={{ fontSize: 28, fontWeight: "bold" }}>{totalSales}</p>
           </div>
         </div>
       )}
     </Layout>
   )
 }
-
