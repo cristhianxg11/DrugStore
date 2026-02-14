@@ -1,86 +1,84 @@
-import { useEffect, useState } from "react"
-import { supabase } from "../lib/supabaseClient"
-import Layout from "../components/Layout"
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+import Layout from "../components/Layout";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
   LineChart, Line
-} from "recharts"
+} from "recharts";
 
 export default function Dashboard() {
-  const [loading, setLoading] = useState(true)
-  const [totalProducts, setTotalProducts] = useState(0)
-  const [totalSales, setTotalSales] = useState(0)
-  const [totalStock, setTotalStock] = useState(0)
-  const [totalRevenue, setTotalRevenue] = useState(0)
-  const [productsData, setProductsData] = useState([])
-  const [salesData, setSalesData] = useState([])
+  const [loading, setLoading] = useState(true);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalSales, setTotalSales] = useState(0);
+  const [totalStock, setTotalStock] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [productsData, setProductsData] = useState([]);
+  const [salesData, setSalesData] = useState([]);
+
+  // --- Obtener business_id ---
+  const bId = typeof window !== "undefined" ? localStorage.getItem("business_id") : null;
+
+  // --- Cerrar sesión ---
+  const logout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("business_id");
+    window.location.href = "/";
+  };
+
+  // --- Función para traer datos del dashboard ---
+  const fetchDashboardData = async () => {
+    if (!bId) return;
+    setLoading(true);
+    try {
+      const { data: products, error: productsError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("business_id", bId);
+      if (productsError) console.error("Error productos:", productsError);
+
+      const { data: sales, error: salesError } = await supabase
+        .from("sales")
+        .select("*")
+        .eq("business_id", bId);
+      if (salesError) console.error("Error ventas:", salesError);
+
+      setTotalProducts(products?.length || 0);
+      setTotalSales(sales?.length || 0);
+      setTotalStock(products?.reduce((acc, p) => acc + p.stock, 0) || 0);
+      setTotalRevenue(sales?.reduce((acc, s) => acc + s.total, 0) || 0);
+
+      setProductsData(products || []);
+      setSalesData(sales || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const bId = localStorage.getItem("business_id")
-        if (!bId) {
-          console.error("No existe business_id")
-          setLoading(false)
-          return
-        }
-
-        // Productos
-        const { data: products, error: productsError } = await supabase
-          .from("products")
-          .select("*")
-          .eq("business_id", bId)
-        if (productsError) console.error("Error productos:", productsError)
-
-        // Ventas
-        const { data: sales, error: salesError } = await supabase
-          .from("sales")
-          .select("*")
-          .eq("business_id", bId)
-        if (salesError) console.error("Error ventas:", salesError)
-
-        setTotalProducts(products?.length || 0)
-        setTotalSales(sales?.length || 0)
-        setTotalStock(products?.reduce((acc, p) => acc + p.stock, 0) || 0)
-        setTotalRevenue(sales?.reduce((acc, s) => acc + s.price, 0) || 0)
-
-        setProductsData(products || [])
-        setSalesData(sales || [])
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  // Cerrar sesión
-  const logout = async () => {
-    await supabase.auth.signOut()
-    localStorage.removeItem("business_id")
-    window.location.href = "/"
-  }
+    fetchDashboardData();
+  }, [bId]);
 
   // Datos para gráficos
   const barChartData = [
     { name: "Productos", cantidad: totalProducts },
     { name: "Ventas", cantidad: totalSales }
-  ]
+  ];
 
-  const stockPieData = productsData.map(p => ({ name: p.name, value: p.stock }))
-  const COLORS = ["#1976d2", "#4caf50", "#ff9800", "#f44336", "#9c27b0", "#00bcd4"]
+  const stockPieData = productsData.map(p => ({ name: p.name, value: p.stock }));
+  const COLORS = ["#1976d2", "#4caf50", "#ff9800", "#f44336", "#9c27b0", "#00bcd4"];
 
-  // Ventas por fecha
-  const salesByDate = {}
+  const salesByDate = {};
   salesData.forEach(s => {
-    const date = new Date(s.created_at).toLocaleDateString()
-    if (!salesByDate[date]) salesByDate[date] = 0
-    salesByDate[date] += s.price
-  })
-  const lineChartData = Object.entries(salesByDate).map(([date, total]) => ({ date, total }))
+    const date = new Date(s.created_at).toLocaleDateString();
+    if (!salesByDate[date]) salesByDate[date] = 0;
+    salesByDate[date] += s.total;
+  });
+  const lineChartData = Object.entries(salesByDate).map(([date, total]) => ({ date, total }));
+
+  if (!bId) return <Layout><p>No se encontró negocio asociado</p></Layout>;
 
   return (
     <Layout>
@@ -88,14 +86,7 @@ export default function Dashboard() {
         <h1 style={{ marginBottom: 0 }}>Dashboard Avanzado</h1>
         <button
           onClick={logout}
-          style={{
-            padding: "8px 16px",
-            background: "#f44336",
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-          }}
+          style={{ padding: "8px 16px", background: "#f44336", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}
         >
           Cerrar sesión
         </button>
@@ -152,10 +143,9 @@ export default function Dashboard() {
         </>
       )}
     </Layout>
-  )
+  );
 }
 
-// Componente Tarjeta
 function Card({ title, value, color }) {
   return (
     <div style={{
@@ -169,10 +159,9 @@ function Card({ title, value, color }) {
       <h3 style={{ marginBottom: 10, color }}>{title}</h3>
       <p style={{ fontSize: 28, fontWeight: "bold" }}>{value}</p>
     </div>
-  )
+  );
 }
 
-// Componente sección de gráfico
 function Section({ title, children }) {
   return (
     <div style={{
@@ -185,5 +174,5 @@ function Section({ title, children }) {
       <h3 style={{ marginBottom: 20, color: "#1976d2" }}>{title}</h3>
       {children}
     </div>
-  )
+  );
 }
