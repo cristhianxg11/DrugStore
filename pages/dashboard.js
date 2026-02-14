@@ -57,6 +57,13 @@ export default function Dashboard() {
     fetchData()
   }, [])
 
+  // Cerrar sesión
+  const logout = async () => {
+    await supabase.auth.signOut()
+    localStorage.removeItem("business_id")
+    window.location.href = "/"
+  }
+
   // Datos para gráficos
   const barChartData = [
     { name: "Productos", cantidad: totalProducts },
@@ -77,7 +84,22 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <h1 style={{ marginBottom: 20 }}>Dashboard Avanzado</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h1 style={{ marginBottom: 0 }}>Dashboard Avanzado</h1>
+        <button
+          onClick={logout}
+          style={{
+            padding: "8px 16px",
+            background: "#f44336",
+            color: "white",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+          }}
+        >
+          Cerrar sesión
+        </button>
+      </div>
 
       {loading ? <p>Cargando datos...</p> : (
         <>
