@@ -27,7 +27,7 @@ export default function Home() {
       .from("business_members")
       .select("business_id")
       .eq("user_id", userId)
-      .single()
+      //.single()
       console.log("Membership result:", membership)
       console.log("Membership error:", memberError)
     if (memberError) {
