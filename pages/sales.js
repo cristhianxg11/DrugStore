@@ -233,7 +233,7 @@ export default function Sales() {
         </div>
       )}
 
-      {/* Lista de ventas */}
+     {/* Lista de ventas */}
       {salesList.length > 0 && (
         <div style={{ marginTop: 40 }}>
           <h3>Ventas recientes</h3>
@@ -244,19 +244,61 @@ export default function Sales() {
                 <th>Cliente</th>
                 <th>Fecha</th>
                 <th>Total</th>
+                <th>Detalle</th>
               </tr>
             </thead>
             <tbody>
-              {salesList.map(s => {
-                const client = clients.find(c => c.id === s.client_id);
-                const saleDate = new Date(s.created_at).toLocaleString();
+              {salesList.map(sale => {
+                const client = clients.find(c => c.id === sale.client_id);
+                const saleDate = new Date(sale.created_at).toLocaleString();
+      
+                // Estado para expandir detalle de productos
+                const [expanded, setExpanded] = useState(false);
+      
                 return (
-                  <tr key={s.id}>
-                    <td>{s.id.substring(0, 8)}...</td>
-                    <td>{client?.name || "Cliente eliminado"}</td>
-                    <td>{saleDate}</td>
-                    <td>${s.total.toLocaleString()}</td>
-                  </tr>
+                  <React.Fragment key={sale.id}>
+                    <tr>
+                      <td>{sale.id.substring(0, 8)}...</td>
+                      <td>{client?.name || "Cliente eliminado"}</td>
+                      <td>{saleDate}</td>
+                      <td>${sale.total.toLocaleString()}</td>
+                      <td>
+                        <button
+                          onClick={() => setExpanded(!expanded)}
+                          style={{ padding: "4px 8px", cursor: "pointer" }}
+                        >
+                          {expanded ? "▲ Ocultar" : "▼ Ver detalle"}
+                        </button>
+                      </td>
+                    </tr>
+      
+                    {expanded && sale.items?.length > 0 && (
+                      <tr>
+                        <td colSpan="5">
+                          <table border="1" cellPadding="6" style={{ width: "100%", marginTop: 5 }}>
+                            <thead>
+                              <tr style={{ background: "#e0e0e0" }}>
+                                <th>Producto</th>
+                                <th>Precio</th>
+                                <th>Cantidad</th>
+                                <th>Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sale.items.map((item, index) => (
+                                <tr key={index}>
+                                  <td>{item.product_name}</td>
+                                  <td>${item.price.toLocaleString()}</td>
+                                  <td>{item.quantity}</td>
+                                  <td>${(item.price * item.quantity).toLocaleString()}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 )
               })}
             </tbody>
