@@ -8,20 +8,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkUser = async () => {
+    const fetchData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-          if (!data.user) {
-            router.push("/")
-          } 
-        const { data: membership } = await supabase
-          .from("business_members")
-          .select("business_id")
-          .eq("user_id", user.id)
-          .single()
-        
-        const bId = membership.business_id
-        
+        const bId = localStorage.getItem("business_id")
+
+        if (!bId) {
+          console.error("No existe business_id")
+          setLoading(false)
+          return
         }
 
         // Productos
@@ -31,12 +25,7 @@ export default function Dashboard() {
           .eq("business_id", bId)
 
         if (productsError) {
-          console.error("Error cargando productos:", productsError.message)
-        }
-      
-        const handleLogout = async () => {
-          await supabase.auth.signOut()
-          router.push("/")
+          console.error(productsError)
         }
 
         // Ventas
@@ -46,7 +35,7 @@ export default function Dashboard() {
           .eq("business_id", bId)
 
         if (salesError) {
-          console.error("Error cargando ventas:", salesError.message)
+          console.error(salesError)
         }
 
         setTotalProducts(products?.length || 0)
@@ -59,7 +48,7 @@ export default function Dashboard() {
       }
     }
 
-    checkUser()
+    fetchData()
   }, [])
 
   return (
@@ -70,12 +59,7 @@ export default function Dashboard() {
         <p>Cargando datos...</p>
       ) : (
         <div style={{ display: "flex", gap: 20 }}>
-          <div style={{ 
-            background: "#1f2937", 
-            color: "white",
-            padding: 20, 
-            borderRadius: 12,
-            minwidth: 150 }}>
+          <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
             <h3>Productos</h3>
             <p>{totalProducts}</p>
           </div>
@@ -89,5 +73,3 @@ export default function Dashboard() {
     </Layout>
   )
 }
-
-
