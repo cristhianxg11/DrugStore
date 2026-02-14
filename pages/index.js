@@ -35,6 +35,7 @@ export default function Home() {
     }
 
     localStorage.setItem("business_id", membership.business_id)
+    console.log("User ID login:", userId)
 
     router.push("/dashboard")
   }
