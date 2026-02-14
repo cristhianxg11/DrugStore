@@ -9,7 +9,7 @@ export default function Home() {
 
   // LOGIN
   const handleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -19,7 +19,9 @@ export default function Home() {
       return
     }
 
-    const userId = data.user.id
+    const { data: sessionData } = await supabase.auth.getSession()
+
+    const userId = sessionData.session.user.id
 
     const { data: membership, error: memberError } = await supabase
       .from("business_members")
