@@ -28,7 +28,8 @@ export default function Home() {
       .select("business_id")
       .eq("user_id", userId)
       .single()
-
+      console.log("Membership result:", membership)
+      console.log("Membership error:", memberError)
     if (memberError) {
       alert("No se encontró negocio asociado")
       return
