@@ -18,29 +18,28 @@ export default function Dashboard() {
           return
         }
 
-        // Productos
+        // Contar productos
         const { data: products, error: productsError } = await supabase
           .from("products")
           .select("id")
           .eq("business_id", bId)
 
         if (productsError) {
-          console.error(productsError)
+          console.error("Error al obtener productos:", productsError)
         }
 
-        // Ventas
+        // Contar ventas
         const { data: sales, error: salesError } = await supabase
           .from("sales")
           .select("id")
           .eq("business_id", bId)
 
         if (salesError) {
-          console.error(salesError)
+          console.error("Error al obtener ventas:", salesError)
         }
 
         setTotalProducts(products?.length || 0)
         setTotalSales(sales?.length || 0)
-
       } catch (err) {
         console.error("Error general:", err)
       } finally {
@@ -73,3 +72,4 @@ export default function Dashboard() {
     </Layout>
   )
 }
+
