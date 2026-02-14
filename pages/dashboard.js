@@ -5,23 +5,47 @@ import Layout from "../components/Layout"
 export default function Dashboard() {
   const [totalProducts, setTotalProducts] = useState(0)
   const [totalSales, setTotalSales] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
-      const bId = localStorage.getItem("business_id")
+      try {
+        const bId = localStorage.getItem("business_id")
 
-      const { data: products } = await supabase
-        .from("products")
-        .select("*")
-        .eq("business_id", bId)
+        if (!bId) {
+          console.error("No existe business_id en localStorage")
+          setLoading(false)
+          return
+        }
 
-      const { data: sales } = await supabase
-        .from("sales")
-        .select("*")
-        .eq("business_id", bId)
+        // Productos
+        const { data: products, error: productsError } = await supabase
+          .from("products")
+          .select("id")
+          .eq("business_id", bId)
 
-      setTotalProducts(products?.length || 0)
-      setTotalSales(sales?.length || 0)
+        if (productsError) {
+          console.error("Error cargando productos:", productsError.message)
+        }
+
+        // Ventas
+        const { data: sales, error: salesError } = await supabase
+          .from("sales")
+          .select("id")
+          .eq("business_id", bId)
+
+        if (salesError) {
+          console.error("Error cargando ventas:", salesError.message)
+        }
+
+        setTotalProducts(products?.length || 0)
+        setTotalSales(sales?.length || 0)
+
+      } catch (err) {
+        console.error("Error general:", err)
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchData()
@@ -31,17 +55,21 @@ export default function Dashboard() {
     <Layout>
       <h1>Dashboard</h1>
 
-      <div style={{ display: "flex", gap: 20 }}>
-        <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
-          <h3>Productos</h3>
-          <p>{totalProducts}</p>
-        </div>
+      {loading ? (
+        <p>Cargando datos...</p>
+      ) : (
+        <div style={{ display: "flex", gap: 20 }}>
+          <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
+            <h3>Productos</h3>
+            <p>{totalProducts}</p>
+          </div>
 
-        <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
-          <h3>Ventas</h3>
-          <p>{totalSales}</p>
+          <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
+            <h3>Ventas</h3>
+            <p>{totalSales}</p>
+          </div>
         </div>
-      </div>
+      )}
     </Layout>
   )
 }
