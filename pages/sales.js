@@ -1,101 +1,19 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabaseClient"
 import Layout from "../components/Layout"
 
 export default function Sales() {
-  const [sales, setSales] = useState([])
-  const [customer, setCustomer] = useState("")
-  const [amount, setAmount] = useState("")
+  const [clients, setClients] = useState([])
+  const [clientName, setClientName] = useState("")
+  const [selectedClient, setSelectedClient] = useState(null)
+  const [productsList, setProductsList] = useState([])
+  const [selectedProduct, setSelectedProduct] = useState("")
+  const [quantity, setQuantity] = useState(1)
+  const [saleItems, setSaleItems] = useState([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const chartCustomerRef = useRef(null)
-  const chartTotalRef = useRef(null)
 
-  // Obtener ventas
-  const fetchSales = async () => {
-    const bId = localStorage.getItem("business_id")
-    if (!bId) {
-      console.error("No business_id")
-      setLoading(false)
-      return
-    }
-
-    const { data, error } = await supabase
-      .from("sales")
-      .select("*")
-      .eq("business_id", bId)
-      .order("created_at", { ascending: true })
-
-    if (error) {
-      console.error("Error al obtener ventas:", error)
-    } else {
-      setSales(data)
-    }
-    setLoading(false)
-  }
-
-  // Agregar venta
-  const addSale = async () => {
-    const bId = localStorage.getItem("business_id")
-    if (!bId) {
-      alert("No se encontró negocio asociado")
-      return
-    }
-
-    if (!customer || !amount) {
-      alert("Ingrese cliente y monto")
-      return
-    }
-
-    const { data, error } = await supabase
-      .from("sales")
-      .insert([
-        {
-          customer,
-          amount: parseFloat(amount),
-          business_id: bId,
-        },
-      ])
-      .select()
-
-    if (error) {
-      console.error("Error al agregar venta:", error)
-      alert("Error al agregar venta: " + error.message)
-      return
-    }
-
-    setCustomer("")
-    setAmount("")
-    fetchSales()
-  }
-
-  // Eliminar venta
-  const deleteSale = async (id) => {
-    if (!confirm("¿Desea eliminar esta venta?")) return
-
-    const { error } = await supabase.from("sales").delete().eq("id", id)
-    if (error) {
-      console.error("Error al eliminar venta:", error)
-      alert("Error al eliminar venta")
-      return
-    }
-
-    fetchSales()
-  }
-
-  // Modificar venta
-  const updateSale = async (id, newCustomer, newAmount) => {
-    const { error } = await supabase
-      .from("sales")
-      .update({ customer: newCustomer, amount: parseFloat(newAmount) })
-      .eq("id", id)
-    if (error) {
-      console.error("Error al modificar venta:", error)
-      alert("Error al modificar venta")
-      return
-    }
-
-    fetchSales()
-  }
+  const bId = localStorage.getItem("business_id")
 
   // Cerrar sesión
   const logout = async () => {
@@ -104,168 +22,211 @@ export default function Sales() {
     window.location.href = "/"
   }
 
-  // Dibujar gráficos con Chart.js
-  const drawCharts = () => {
-    if (!sales.length) return
+  // Cargar clientes y productos
+  useEffect(() => {
+    if (!bId) return
 
-    // Ventas por cliente
-    const salesByCustomer = {}
-    sales.forEach((s) => {
-      if (!salesByCustomer[s.customer]) salesByCustomer[s.customer] = 0
-      salesByCustomer[s.customer] += s.amount
-    })
+    const fetchData = async () => {
+      try {
+        const { data: clientsData, error: clientsError } = await supabase
+          .from("clients")
+          .select("*")
+          .eq("business_id", bId)
+        if (clientsError) console.error("Error clientes:", clientsError)
+        else setClients(clientsData)
 
-    const customerLabels = Object.keys(salesByCustomer)
-    const customerData = Object.values(salesByCustomer)
-
-    if (chartCustomerRef.current) {
-      new window.Chart(chartCustomerRef.current, {
-        type: "bar",
-        data: {
-          labels: customerLabels,
-          datasets: [
-            {
-              label: "Ventas por cliente",
-              data: customerData,
-              backgroundColor: "#1976d2",
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-        },
-      })
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select("*")
+          .eq("business_id", bId)
+        if (productsError) console.error("Error productos:", productsError)
+        else setProductsList(productsData)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    // Ventas totales por día
-    const salesByDate = {}
-    sales.forEach((s) => {
-      const date = new Date(s.created_at).toLocaleDateString()
-      if (!salesByDate[date]) salesByDate[date] = 0
-      salesByDate[date] += s.amount
-    })
+    fetchData()
+  }, [bId])
 
-    const dateLabels = Object.keys(salesByDate)
-    const dateData = Object.values(salesByDate)
+  // Calcular total automáticamente
+  useEffect(() => {
+    const newTotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
+    setTotal(newTotal)
+  }, [saleItems])
 
-    if (chartTotalRef.current) {
-      new window.Chart(chartTotalRef.current, {
-        type: "line",
-        data: {
-          labels: dateLabels,
-          datasets: [
-            {
-              label: "Ventas totales",
-              data: dateData,
-              borderColor: "#4caf50",
-              backgroundColor: "rgba(76,175,80,0.2)",
-              fill: true,
-              tension: 0.3,
-            },
-          ],
-        },
-        options: { responsive: true },
-      })
-    }
+  // --- Clientes ---
+  const addClient = async () => {
+    if (!clientName) return alert("Ingrese el nombre del cliente")
+    const { data, error } = await supabase
+      .from("clients")
+      .insert([{ name: clientName, business_id: bId }])
+      .select()
+      .single()
+    if (error) return alert("Error al agregar cliente: " + error.message)
+    setClients([...clients, data])
+    setClientName("")
   }
 
-  useEffect(() => {
-    fetchSales()
-  }, [])
+  const updateClient = async (client) => {
+    const newName = prompt("Nuevo nombre del cliente:", client.name)
+    if (!newName) return
+    const { data, error } = await supabase
+      .from("clients")
+      .update({ name: newName })
+      .eq("id", client.id)
+      .select()
+      .single()
+    if (error) return alert("Error al modificar cliente: " + error.message)
+    setClients(clients.map(c => c.id === client.id ? data : c))
+  }
 
-  useEffect(() => {
-    // Cargar Chart.js desde CDN si no existe
-    if (!window.Chart) {
-      const script = document.createElement("script")
-      script.src = "https://cdn.jsdelivr.net/npm/chart.js"
-      script.onload = drawCharts
-      document.body.appendChild(script)
-    } else {
-      drawCharts()
+  const deleteClient = async (client) => {
+    if (!confirm(`Eliminar cliente ${client.name}?`)) return
+    const { error } = await supabase.from("clients").delete().eq("id", client.id)
+    if (error) return alert("Error al eliminar cliente: " + error.message)
+    setClients(clients.filter(c => c.id !== client.id))
+    if (selectedClient?.id === client.id) setSelectedClient(null)
+  }
+
+  // --- Productos ---
+  const addProductToSale = () => {
+    if (!selectedProduct) return alert("Seleccione un producto")
+    const product = productsList.find(p => p.id === selectedProduct)
+    if (!product) return
+    if (quantity > product.stock) return alert("No hay suficiente stock")
+    setSaleItems([...saleItems, { ...product, quantity }])
+    setSelectedProduct("")
+    setQuantity(1)
+  }
+
+  const removeSaleItem = (index) => {
+    const items = [...saleItems]
+    items.splice(index, 1)
+    setSaleItems(items)
+  }
+
+  // --- Guardar venta ---
+  const saveSale = async () => {
+    if (!selectedClient) return alert("Seleccione un cliente")
+    if (saleItems.length === 0) return alert("Agregue productos a la venta")
+
+    const { data: sale, error: saleError } = await supabase
+      .from("sales")
+      .insert([{ client_id: selectedClient.id, business_id: bId, total }])
+      .select()
+      .single()
+    if (saleError) return alert("Error al guardar venta: " + saleError.message)
+
+    for (const item of saleItems) {
+      await supabase.from("sale_items").insert([
+        { sale_id: sale.id, product_id: item.id, quantity: item.quantity, price: item.price }
+      ])
+      // Reducir stock
+      await supabase.from("products").update({ stock: item.stock - item.quantity }).eq("id", item.id)
     }
-  }, [sales])
+
+    alert("Venta guardada correctamente")
+    setSelectedClient(null)
+    setSaleItems([])
+    setTotal(0)
+    // Recargar productos
+    const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
+    setProductsList(productsData)
+  }
+
+  if (loading) return <Layout><p>Cargando...</p></Layout>
 
   return (
     <Layout>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1>Ventas</h1>
-        <button onClick={logout} style={{ padding: "8px 16px", background: "#f44336", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>
+        <h1 style={{ marginBottom: 0 }}>Ventas</h1>
+        <button
+          onClick={logout}
+          style={{ padding: "8px 16px", background: "#f44336", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}
+        >
           Cerrar sesión
         </button>
       </div>
 
-      {/* Formulario agregar venta */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+      {/* Clientes */}
+      <div style={{ marginBottom: 20 }}>
         <input
-          placeholder="Cliente"
-          value={customer}
-          onChange={(e) => setCustomer(e.target.value)}
-          style={{ padding: 8, borderRadius: 8, border: "1px solid #ccc", flex: 1 }}
+          placeholder="Nuevo cliente"
+          value={clientName}
+          onChange={e => setClientName(e.target.value)}
         />
-        <input
-          placeholder="Monto"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          style={{ padding: 8, borderRadius: 8, border: "1px solid #ccc", width: 120 }}
-        />
-        <button
-          onClick={addSale}
-          style={{ padding: "8px 16px", background: "#1976d2", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}
-        >
-          Agregar
-        </button>
+        <button onClick={addClient} style={{ marginLeft: 10 }}>Agregar Cliente</button>
       </div>
 
-      {/* Gráficos */}
-      <div style={{ display: "flex", gap: 20, marginBottom: 20, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 300, background: "white", padding: 20, borderRadius: 8 }}>
-          <canvas ref={chartCustomerRef}></canvas>
-        </div>
-        <div style={{ flex: 1, minWidth: 300, background: "white", padding: 20, borderRadius: 8 }}>
-          <canvas ref={chartTotalRef}></canvas>
-        </div>
+      <div style={{ marginBottom: 20 }}>
+        <strong>Clientes:</strong>
+        <ul>
+          {clients.map(client => (
+            <li key={client.id} style={{ marginBottom: 5 }}>
+              <button onClick={() => setSelectedClient(client)}>
+                {client.name} {selectedClient?.id === client.id ? "(seleccionado)" : ""}
+              </button>
+              <button onClick={() => updateClient(client)} style={{ marginLeft: 5 }}>✏️</button>
+              <button onClick={() => deleteClient(client)} style={{ marginLeft: 5, color: "red" }}>🗑️</button>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Tabla de ventas */}
-      {loading ? (
-        <p>Cargando ventas...</p>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "#1976d2", color: "white" }}>
-              <th style={{ padding: 12 }}>Cliente</th>
-              <th style={{ padding: 12 }}>Monto</th>
-              <th style={{ padding: 12 }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sales.map((s) => (
-              <tr key={s.id} style={{ borderBottom: "1px solid #ccc" }}>
-                <td style={{ padding: 12 }}>{s.customer}</td>
-                <td style={{ padding: 12 }}>${s.amount}</td>
-                <td style={{ padding: 12, display: "flex", gap: 10 }}>
-                  <button
-                    onClick={() => {
-                      const newCustomer = prompt("Nuevo cliente:", s.customer)
-                      const newAmount = prompt("Nuevo monto:", s.amount)
-                      if (newCustomer && newAmount) updateSale(s.id, newCustomer, newAmount)
-                    }}
-                    style={{ padding: "6px 12px", background: "#4caf50", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}
-                  >
-                    Modificar
-                  </button>
-                  <button
-                    onClick={() => deleteSale(s.id)}
-                    style={{ padding: "6px 12px", background: "#f44336", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}
-                  >
-                    Eliminar
-                  </button>
-                </td>
+      {selectedClient && (
+        <div style={{ marginBottom: 20 }}>
+          <h3>Cliente seleccionado: {selectedClient.name}</h3>
+
+          {/* Selección de productos */}
+          <div>
+            <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
+              <option value="">Seleccione un producto</option>
+              {productsList.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name} - ${p.price} (Stock: {p.stock})
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min="1"
+              value={quantity}
+              onChange={e => setQuantity(parseInt(e.target.value))}
+              style={{ width: 60, marginLeft: 5 }}
+            />
+            <button onClick={addProductToSale} style={{ marginLeft: 5 }}>Agregar producto</button>
+          </div>
+
+          {/* Lista de productos agregados */}
+          <table border="1" cellPadding="10" style={{ marginTop: 10, width: "100%" }}>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Precio</th>
+                <th>Cantidad</th>
+                <th>Subtotal</th>
+                <th>Acción</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {saleItems.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.name}</td>
+                  <td>${item.price}</td>
+                  <td>{item.quantity}</td>
+                  <td>${item.price * item.quantity}</td>
+                  <td><button onClick={() => removeSaleItem(index)}>Eliminar</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3>Total: ${total}</h3>
+          <button onClick={saveSale} style={{ marginTop: 10, padding: "8px 16px" }}>Guardar Venta</button>
+        </div>
       )}
     </Layout>
   )
