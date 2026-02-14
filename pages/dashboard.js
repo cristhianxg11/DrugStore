@@ -8,10 +8,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchData = async () => {
+    const checkUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
-
+          if (!data.user) {
+            router.push("/")
+          } 
         const { data: membership } = await supabase
           .from("business_members")
           .select("business_id")
@@ -19,6 +21,7 @@ export default function Dashboard() {
           .single()
         
         const bId = membership.business_id
+        
         }
 
         // Productos
@@ -29,6 +32,11 @@ export default function Dashboard() {
 
         if (productsError) {
           console.error("Error cargando productos:", productsError.message)
+        }
+      
+        const handleLogout = async () => {
+          await supabase.auth.signOut()
+          router.push("/")
         }
 
         // Ventas
@@ -51,7 +59,7 @@ export default function Dashboard() {
       }
     }
 
-    fetchData()
+    checkUser()
   }, [])
 
   return (
@@ -62,7 +70,12 @@ export default function Dashboard() {
         <p>Cargando datos...</p>
       ) : (
         <div style={{ display: "flex", gap: 20 }}>
-          <div style={{ background: "white", padding: 20, borderRadius: 8 }}>
+          <div style={{ 
+            background: "#1f2937", 
+            color: "white",
+            padding: 20, 
+            borderRadius: 12,
+            minwidth: 150 }}>
             <h3>Productos</h3>
             <p>{totalProducts}</p>
           </div>
