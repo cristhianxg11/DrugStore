@@ -11,25 +11,50 @@ export default function Products() {
   const fetchProducts = async () => {
     const bId = localStorage.getItem("business_id")
 
-    const { data } = await supabase
+    if (!bId) {
+      console.error("No business_id")
+      return
+    }
+
+    const { data, error } = await supabase
       .from("products")
       .select("*")
       .eq("business_id", bId)
 
-    setProducts(data || [])
+    if (error) {
+      console.error("Error al traer productos:", error)
+    } else {
+      setProducts(data || [])
+    }
   }
 
   const addProduct = async () => {
     const bId = localStorage.getItem("business_id")
 
-    await supabase.from("products").insert([
-      {
-        name,
-        price: parseFloat(price),
-        stock: parseInt(stock),
-        business_id: bId,
-      },
-    ])
+    if (!bId) {
+      alert("No se encontró negocio asociado")
+      return
+    }
+
+    const { data, error } = await supabase
+      .from("products")
+      .insert([
+        {
+          name,
+          price: parseFloat(price),
+          stock: parseInt(stock),
+          business_id: bId,
+        },
+      ])
+      .select()
+
+    if (error) {
+      console.error("Error al agregar producto:", error)
+      alert("Error al agregar producto")
+      return
+    }
+
+    console.log("Producto insertado:", data)
 
     setName("")
     setPrice("")
@@ -90,5 +115,6 @@ export default function Products() {
     </Layout>
   )
 }
+
 
 
