@@ -8,6 +8,7 @@ export default function Products() {
   const [price, setPrice] = useState("")
   const [stock, setStock] = useState("")
 
+  // Traer productos
   const fetchProducts = async () => {
     const bId = localStorage.getItem("business_id")
 
@@ -17,22 +18,28 @@ export default function Products() {
     }
 
     const { data, error } = await supabase
-      .from('products')
-      .insert([{ name, stock }]); // ejemplo
-    
+      .from("products")
+      .select("*")
+      .eq("business_id", bId)
+
     if (error) {
-      console.error("Error al agregar producto:", error);
-      alert("Error al agregar producto: " + error.message); // muestra el mensaje real
+      console.error("Error al obtener productos:", error)
     } else {
-      console.log("Producto agregado:", data);
+      setProducts(data)
     }
   }
 
+  // Agregar producto
   const addProduct = async () => {
     const bId = localStorage.getItem("business_id")
 
     if (!bId) {
       alert("No se encontró negocio asociado")
+      return
+    }
+
+    if (!name || !price || !stock) {
+      alert("Completa todos los campos")
       return
     }
 
@@ -50,15 +57,18 @@ export default function Products() {
 
     if (error) {
       console.error("Error al agregar producto:", error)
-      alert("Error al agregar producto")
+      alert("Error al agregar producto: " + error.message)
       return
     }
 
-    console.log("Producto insertado:", data)
+    console.log("Producto agregado:", data)
 
+    // Limpiar campos
     setName("")
     setPrice("")
     setStock("")
+
+    // Refrescar lista
     fetchProducts()
   }
 
@@ -115,6 +125,7 @@ export default function Products() {
     </Layout>
   )
 }
+
 
 
 
