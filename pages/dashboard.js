@@ -10,12 +10,15 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const bId = localStorage.getItem("business_id")
+        const { data: { user } } = await supabase.auth.getUser()
 
-        if (!bId) {
-          console.error("No existe business_id en localStorage")
-          setLoading(false)
-          return
+        const { data: membership } = await supabase
+          .from("business_members")
+          .select("business_id")
+          .eq("user_id", user.id)
+          .single()
+        
+        const bId = membership.business_id
         }
 
         // Productos
