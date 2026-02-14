@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabaseClient"
 import Layout from "../components/Layout"
 
 export default function Sales() {
-  const [bId, setBId] = useState(null)
+  const [bId, setBId] = useState(null) // business_id desde localStorage
   const [clients, setClients] = useState([])
   const [clientName, setClientName] = useState("")
   const [selectedClient, setSelectedClient] = useState(null)
@@ -12,12 +12,10 @@ export default function Sales() {
   const [quantity, setQuantity] = useState(1)
   const [saleItems, setSaleItems] = useState([])
   const [total, setTotal] = useState(0)
+  const [sales, setSales] = useState([])
   const [loading, setLoading] = useState(true)
-  const [salesList, setSalesList] = useState([])
-  const [expandedSales, setExpandedSales] = useState({})
-  const [totalVentas, setTotalVentas] = useState(0)
-  const [totalPorCliente, setTotalPorCliente] = useState({})
 
+  // --- Obtener business_id solo en cliente ---
   useEffect(() => {
     if (typeof window !== "undefined") {
       const businessId = localStorage.getItem("business_id")
@@ -25,63 +23,64 @@ export default function Sales() {
     }
   }, [])
 
+  // --- Cerrar sesión ---
   const logout = async () => {
     await supabase.auth.signOut()
     localStorage.removeItem("business_id")
     window.location.href = "/"
   }
 
-  // --- Cargar clientes, productos y ventas ---
+  // --- Cargar clientes y productos ---
   useEffect(() => {
     if (!bId) return
+
     const fetchData = async () => {
       try {
-        const { data: clientsData } = await supabase
+        // Clientes
+        const { data: clientsData, error: clientsError } = await supabase
           .from("clients")
           .select("*")
           .eq("business_id", bId)
-        setClients(clientsData || [])
+        if (clientsError) console.error("Error clientes:", clientsError)
+        else setClients(clientsData ?? [])
 
-        const { data: productsData } = await supabase
+        // Productos
+        const { data: productsData, error: productsError } = await supabase
           .from("products")
           .select("*")
           .eq("business_id", bId)
-        setProductsList(productsData || [])
+        if (productsError) console.error("Error productos:", productsError)
+        else setProductsList(productsData ?? [])
 
-        const { data: salesData } = await supabase
+        // Ventas
+        const { data: salesData, error: salesError } = await supabase
           .from("sales")
-          .select("*, sale_items(*, product(*))")
+          .select(`
+            *,
+            sale_items (
+              *,
+              product (*)
+            )
+          `)
           .eq("business_id", bId)
           .order("created_at", { ascending: false })
-        setSalesList(salesData || [])
-
+        if (salesError) console.error("Error ventas:", salesError)
+        else setSales(salesData ?? [])
       } catch (err) {
         console.error(err)
       } finally {
         setLoading(false)
       }
     }
+
     fetchData()
   }, [bId])
 
-  // --- Calcular total de venta actual ---
+  // --- Calcular total automáticamente ---
   useEffect(() => {
     const newTotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
     setTotal(newTotal)
   }, [saleItems])
-
-  // --- Calcular total general y por cliente ---
-  useEffect(() => {
-    const totalG = salesList.reduce((acc, s) => acc + s.total, 0)
-    setTotalVentas(totalG)
-
-    // Total por cliente
-    const totals = {}
-    salesList.forEach(s => {
-      totals[s.client_id] = (totals[s.client_id] || 0) + s.total
-    })
-    setTotalPorCliente(totals)
-  }, [salesList])
 
   // --- Clientes ---
   const addClient = async () => {
@@ -117,7 +116,7 @@ export default function Sales() {
     if (selectedClient?.id === client.id) setSelectedClient(null)
   }
 
-  // --- Productos ---
+  // --- Productos para venta ---
   const addProductToSale = () => {
     if (!selectedProduct) return alert("Seleccione un producto")
     const product = productsList.find(p => p.id === selectedProduct)
@@ -139,39 +138,54 @@ export default function Sales() {
     if (!selectedClient) return alert("Seleccione un cliente")
     if (saleItems.length === 0) return alert("Agregue productos a la venta")
 
-    const { data: sale, error: saleError } = await supabase
-      .from("sales")
-      .insert([{ client_id: selectedClient.id, business_id: bId, total }])
-      .select()
-      .single()
-    if (saleError) return alert("Error al guardar venta: " + saleError.message)
+    try {
+      // Guardar venta
+      const { data: sale, error: saleError } = await supabase
+        .from("sales")
+        .insert([{ client_id: selectedClient.id, business_id: bId, total }])
+        .select()
+        .single()
+      if (saleError) return alert("Error al guardar venta: " + saleError.message)
 
-    for (const item of saleItems) {
-      await supabase.from("sale_items").insert([
-        { sale_id: sale.id, product_id: item.id, quantity: item.quantity, price: item.price }
-      ])
-      await supabase.from("products").update({ stock: item.stock - item.quantity }).eq("id", item.id)
+      // Guardar items
+      for (const item of saleItems) {
+        await supabase.from("sale_items").insert([
+          { sale_id: sale.id, product_id: item.id, quantity: item.quantity, price: item.price }
+        ])
+        // Reducir stock
+        await supabase.from("products").update({ stock: item.stock - item.quantity }).eq("id", item.id)
+      }
+
+      alert("Venta guardada correctamente")
+      setSelectedClient(null)
+      setSaleItems([])
+      setTotal(0)
+
+      // Recargar productos y ventas
+      const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
+      setProductsList(productsData ?? [])
+
+      const { data: salesData } = await supabase
+        .from("sales")
+        .select(`
+          *,
+          sale_items (
+            *,
+            product (*)
+          )
+        `)
+        .eq("business_id", bId)
+        .order("created_at", { ascending: false })
+      setSales(salesData ?? [])
+
+    } catch (err) {
+      console.error(err)
+      alert("Error al guardar venta")
     }
-
-    alert("Venta guardada correctamente")
-    setSelectedClient(null)
-    setSaleItems([])
-    setTotal(0)
-
-    // Recargar productos y ventas
-    const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
-    setProductsList(productsData)
-    const { data: salesData } = await supabase.from("sales").select("*, sale_items(*, product(*))").eq("business_id", bId).order("created_at", { ascending: false })
-    setSalesList(salesData)
   }
 
   if (loading) return <Layout><p>Cargando...</p></Layout>
   if (!bId) return <Layout><p>No se encontró negocio asociado</p></Layout>
-
-  const getClientName = (clientId) => {
-    const client = clients.find(c => c.id === clientId)
-    return client ? client.name : "Desconocido"
-  }
 
   return (
     <Layout>
@@ -183,10 +197,6 @@ export default function Sales() {
         >
           Cerrar sesión
         </button>
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <strong>Total de ventas: ${totalVentas.toLocaleString()}</strong>
       </div>
 
       {/* Clientes */}
@@ -207,9 +217,6 @@ export default function Sales() {
               <button onClick={() => setSelectedClient(client)}>
                 {client.name} {selectedClient?.id === client.id ? "(seleccionado)" : ""}
               </button>
-              <span style={{ marginLeft: 10, fontWeight: "bold" }}>
-                Total compras: ${totalPorCliente[client.id] ? totalPorCliente[client.id] : 0}
-              </span>
               <button onClick={() => updateClient(client)} style={{ marginLeft: 5 }}>✏️</button>
               <button onClick={() => deleteClient(client)} style={{ marginLeft: 5, color: "red" }}>🗑️</button>
             </li>
@@ -217,10 +224,11 @@ export default function Sales() {
         </ul>
       </div>
 
-      {/* Venta actual */}
       {selectedClient && (
         <div style={{ marginBottom: 20 }}>
           <h3>Cliente seleccionado: {selectedClient.name}</h3>
+
+          {/* Selección de productos */}
           <div>
             <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
               <option value="">Seleccione un producto</option>
@@ -234,11 +242,13 @@ export default function Sales() {
               type="number"
               min="1"
               value={quantity}
-              onChange={e => setQuantity(parseInt(e.target.value))}
+              onChange={e => setQuantity(Number(e.target.value) || 1)}
               style={{ width: 60, marginLeft: 5 }}
             />
             <button onClick={addProductToSale} style={{ marginLeft: 5 }}>Agregar producto</button>
           </div>
+
+          {/* Lista de productos agregados */}
           <table border="1" cellPadding="10" style={{ marginTop: 10, width: "100%" }}>
             <thead>
               <tr>
@@ -261,6 +271,7 @@ export default function Sales() {
               ))}
             </tbody>
           </table>
+
           <h3>Total: ${total}</h3>
           <button onClick={saveSale} style={{ marginTop: 10, padding: "8px 16px" }}>Guardar Venta</button>
         </div>
@@ -269,25 +280,19 @@ export default function Sales() {
       {/* Ventas recientes */}
       <div style={{ marginTop: 40 }}>
         <h2>Ventas recientes</h2>
-        {salesList.map(sale => (
-          <div key={sale.id} style={{ marginBottom: 10, border: "1px solid #ccc", padding: 10, borderRadius: 8 }}>
-            <div>
-              Venta #{sale.id} - Cliente: {getClientName(sale.client_id)} - Total: ${sale.total}
-              <button onClick={() => setExpandedSales(prev => ({ ...prev, [sale.id]: !prev[sale.id] }))} style={{ marginLeft: 10 }}>
-                {expandedSales[sale.id] ? "Ocultar productos" : "Ver productos"}
-              </button>
-            </div>
-            {expandedSales[sale.id] && (
-              <ul style={{ marginTop: 5 }}>
-                {sale.sale_items.map((item, idx) => (
-                  <li key={idx}>
-                    {item.product?.name} - ${item.price} x {item.quantity} = ${item.price * item.quantity}
-                  </li>
+        {sales?.length === 0 && <p>No hay ventas registradas</p>}
+        <ul>
+          {sales?.map(sale => (
+            <li key={sale.id}>
+              Venta #{sale.id} - Total: ${sale.total}
+              <ul>
+                {sale.sale_items?.map(item => (
+                  <li key={item.id}>{item.product?.name} x {item.quantity} = ${item.price * item.quantity}</li>
                 ))}
               </ul>
-            )}
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
       </div>
     </Layout>
   )
