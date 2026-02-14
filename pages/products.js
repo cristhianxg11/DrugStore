@@ -7,8 +7,9 @@ export default function Products() {
   const [name, setName] = useState("")
   const [price, setPrice] = useState("")
   const [stock, setStock] = useState("")
+  const [cost, setCost] = useState("")
 
-  // Traer productos
+  // Traer productos del negocio
   const fetchProducts = async () => {
     const bId = localStorage.getItem("business_id")
 
@@ -38,7 +39,7 @@ export default function Products() {
       return
     }
 
-    if (!name || !price || !stock) {
+    if (!name || !price || !stock || !cost) {
       alert("Completa todos los campos")
       return
     }
@@ -50,6 +51,7 @@ export default function Products() {
           name,
           price: parseFloat(price),
           stock: parseInt(stock),
+          cost: parseFloat(cost),
           business_id: bId,
         },
       ])
@@ -67,6 +69,7 @@ export default function Products() {
     setName("")
     setPrice("")
     setStock("")
+    setCost("")
 
     // Refrescar lista
     fetchProducts()
@@ -100,6 +103,13 @@ export default function Products() {
         style={{ marginLeft: 10 }}
       />
 
+      <input
+        placeholder="Costo"
+        value={cost}
+        onChange={(e) => setCost(e.target.value)}
+        style={{ marginLeft: 10 }}
+      />
+
       <button onClick={addProduct} style={{ marginLeft: 10 }}>
         Agregar
       </button>
@@ -110,6 +120,7 @@ export default function Products() {
             <th>Nombre</th>
             <th>Precio</th>
             <th>Stock</th>
+            <th>Costo</th>
           </tr>
         </thead>
         <tbody>
@@ -118,6 +129,7 @@ export default function Products() {
               <td>{p.name}</td>
               <td>{p.price}</td>
               <td>{p.stock}</td>
+              <td>{p.cost}</td>
             </tr>
           ))}
         </tbody>
@@ -125,6 +137,7 @@ export default function Products() {
     </Layout>
   )
 }
+
 
 
 
