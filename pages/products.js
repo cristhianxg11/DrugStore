@@ -17,14 +17,14 @@ export default function Products() {
     }
 
     const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("business_id", bId)
-
+      .from('products')
+      .insert([{ name, stock }]); // ejemplo
+    
     if (error) {
-      console.error("Error al traer productos:", error)
+      console.error("Error al agregar producto:", error);
+      alert("Error al agregar producto: " + error.message); // muestra el mensaje real
     } else {
-      setProducts(data || [])
+      console.log("Producto agregado:", data);
     }
   }
 
