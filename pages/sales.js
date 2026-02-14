@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabaseClient"
 import Layout from "../components/Layout"
 
 export default function Sales() {
-  const [bId, setBId] = useState(null) // business_id desde localStorage
+  const [bId, setBId] = useState(null)
   const [clients, setClients] = useState([])
   const [clientName, setClientName] = useState("")
   const [selectedClient, setSelectedClient] = useState(null)
@@ -14,7 +14,7 @@ export default function Sales() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  // --- Obtener business_id solo en cliente ---
+  // --- Obtener business_id ---
   useEffect(() => {
     if (typeof window !== "undefined") {
       const businessId = localStorage.getItem("business_id")
@@ -34,19 +34,11 @@ export default function Sales() {
     if (!bId) return
     const fetchData = async () => {
       try {
-        const { data: clientsData, error: clientsError } = await supabase
-          .from("clients")
-          .select("*")
-          .eq("business_id", bId)
-        if (clientsError) console.error("Error clientes:", clientsError)
-        else setClients(clientsData)
+        const { data: clientsData } = await supabase.from("clients").select("*").eq("business_id", bId)
+        setClients(clientsData || [])
 
-        const { data: productsData, error: productsError } = await supabase
-          .from("products")
-          .select("*")
-          .eq("business_id", bId)
-        if (productsError) console.error("Error productos:", productsError)
-        else setProductsList(productsData)
+        const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
+        setProductsList(productsData || [])
       } catch (err) {
         console.error(err)
       } finally {
@@ -56,10 +48,9 @@ export default function Sales() {
     fetchData()
   }, [bId])
 
-  // --- Calcular total automáticamente ---
+  // --- Calcular total ---
   useEffect(() => {
-    const newTotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
-    setTotal(newTotal)
+    setTotal(saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0))
   }, [saleItems])
 
   // --- Clientes ---
@@ -96,7 +87,7 @@ export default function Sales() {
     if (selectedClient?.id === client.id) setSelectedClient(null)
   }
 
-  // --- Productos para venta ---
+  // --- Productos ---
   const addProductToSale = () => {
     if (!selectedProduct) return alert("Seleccione un producto")
     const product = productsList.find(p => p.id === selectedProduct)
@@ -113,7 +104,6 @@ export default function Sales() {
     setSaleItems(items)
   }
 
-  // --- Guardar venta ---
   const saveSale = async () => {
     if (!selectedClient) return alert("Seleccione un cliente")
     if (saleItems.length === 0) return alert("Agregue productos a la venta")
@@ -129,7 +119,6 @@ export default function Sales() {
       await supabase.from("sale_items").insert([
         { sale_id: sale.id, product_id: item.id, quantity: item.quantity, price: item.price }
       ])
-      // Reducir stock
       await supabase.from("products").update({ stock: item.stock - item.quantity }).eq("id", item.id)
     }
 
@@ -137,7 +126,7 @@ export default function Sales() {
     setSelectedClient(null)
     setSaleItems([])
     setTotal(0)
-    // Recargar productos
+
     const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
     setProductsList(productsData)
   }
@@ -147,7 +136,7 @@ export default function Sales() {
 
   return (
     <Layout>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
         <h1 style={{ marginBottom: 0 }}>Ventas</h1>
         <button
           onClick={logout}
@@ -157,37 +146,47 @@ export default function Sales() {
         </button>
       </div>
 
+      {/* Tarjetas resumen */}
+      <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
+        <SummaryCard title="Clientes" value={clients.length} color="#1976d2" />
+        <SummaryCard title="Productos" value={productsList.length} color="#4caf50" />
+        <SummaryCard title="Total Venta" value={`$${total}`} color="#ff9800" />
+      </div>
+
       {/* Clientes */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 30 }}>
         <input
           placeholder="Nuevo cliente"
           value={clientName}
           onChange={e => setClientName(e.target.value)}
         />
-        <button onClick={addClient} style={{ marginLeft: 10 }}>Agregar Cliente</button>
+        <button onClick={addClient} style={{ marginLeft: 10, padding: "5px 10px" }}>Agregar</button>
       </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <strong>Clientes:</strong>
-        <ul>
-          {clients.map(client => (
-            <li key={client.id} style={{ marginBottom: 5 }}>
-              <button onClick={() => setSelectedClient(client)}>
-                {client.name} {selectedClient?.id === client.id ? "(seleccionado)" : ""}
-              </button>
-              <button onClick={() => updateClient(client)} style={{ marginLeft: 5 }}>✏️</button>
-              <button onClick={() => deleteClient(client)} style={{ marginLeft: 5, color: "red" }}>🗑️</button>
-            </li>
-          ))}
-        </ul>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 30 }}>
+        {clients.map(client => (
+          <div key={client.id} style={{
+            padding: 10, borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            background: selectedClient?.id === client.id ? "#e3f2fd" : "white",
+            display: "flex", justifyContent: "space-between", alignItems: "center", minWidth: 150
+          }}>
+            <span onClick={() => setSelectedClient(client)} style={{ cursor: "pointer" }}>
+              {client.name}
+            </span>
+            <div>
+              <button onClick={() => updateClient(client)} style={{ marginRight: 5 }}>✏️</button>
+              <button onClick={() => deleteClient(client)} style={{ color: "red" }}>🗑️</button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {selectedClient && (
-        <div style={{ marginBottom: 20 }}>
+        <div>
           <h3>Cliente seleccionado: {selectedClient.name}</h3>
 
           {/* Selección de productos */}
-          <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
             <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
               <option value="">Seleccione un producto</option>
               {productsList.map(p => (
@@ -196,49 +195,51 @@ export default function Sales() {
                 </option>
               ))}
             </select>
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={e => setQuantity(parseInt(e.target.value))}
-              style={{ width: 60, marginLeft: 5 }}
-            />
-            <button onClick={addProductToSale} style={{ marginLeft: 5 }}>Agregar producto</button>
+            <input type="number" min="1" value={quantity} onChange={e => setQuantity(parseInt(e.target.value))} style={{ width: 60 }} />
+            <button onClick={addProductToSale} style={{ padding: "5px 10px" }}>Agregar</button>
           </div>
 
-          {/* Lista de productos agregados */}
-          <table border="1" cellPadding="10" style={{ marginTop: 10, width: "100%" }}>
+          {/* Lista de productos */}
+          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 20 }}>
             <thead>
               <tr>
-                <th>Producto</th>
-                <th>Precio</th>
-                <th>Cantidad</th>
-                <th>Subtotal</th>
-                <th>Acción</th>
+                <th style={{ borderBottom: "1px solid #ccc" }}>Producto</th>
+                <th style={{ borderBottom: "1px solid #ccc" }}>Precio</th>
+                <th style={{ borderBottom: "1px solid #ccc" }}>Cantidad</th>
+                <th style={{ borderBottom: "1px solid #ccc" }}>Subtotal</th>
+                <th style={{ borderBottom: "1px solid #ccc" }}>Acción</th>
               </tr>
             </thead>
             <tbody>
-              {saleItems.map((item, index) => (
-                <tr key={index}>
+              {saleItems.map((item, i) => (
+                <tr key={i}>
                   <td>{item.name}</td>
                   <td>${item.price}</td>
                   <td>{item.quantity}</td>
                   <td>${item.price * item.quantity}</td>
-                  <td><button onClick={() => removeSaleItem(index)}>Eliminar</button></td>
+                  <td><button onClick={() => removeSaleItem(i)} style={{ color: "red" }}>Eliminar</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <h3>Total: ${total}</h3>
-          <button
-            onClick={saveSale}
-            style={{ marginTop: 10, padding: "8px 16px" }}
-          >
-            Guardar Venta
-          </button>
+          <h3>Total Venta: ${total}</h3>
+          <button onClick={saveSale} style={{ padding: "8px 16px" }}>Guardar Venta</button>
         </div>
       )}
     </Layout>
+  )
+}
+
+// --- Componente resumen ---
+function SummaryCard({ title, value, color }) {
+  return (
+    <div style={{
+      flex: 1, padding: 20, borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+      background: "white", textAlign: "center"
+    }}>
+      <h3 style={{ color, marginBottom: 10 }}>{title}</h3>
+      <p style={{ fontSize: 24, fontWeight: "bold" }}>{value}</p>
+    </div>
   )
 }
