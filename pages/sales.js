@@ -18,14 +18,14 @@ export default function Sales() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const businessId = localStorage.getItem("business_id")
-      if (businessId) setBId(businessId)
+      setBId(businessId)
     }
   }, [])
 
   // --- Cerrar sesión ---
   const logout = async () => {
     await supabase.auth.signOut()
-    if (typeof window !== "undefined") localStorage.removeItem("business_id")
+    localStorage.removeItem("business_id")
     window.location.href = "/"
   }
 
@@ -39,14 +39,14 @@ export default function Sales() {
           .select("*")
           .eq("business_id", bId)
         if (clientsError) console.error("Error clientes:", clientsError)
-        else setClients(clientsData || [])
+        else setClients(clientsData)
 
         const { data: productsData, error: productsError } = await supabase
           .from("products")
           .select("*")
           .eq("business_id", bId)
         if (productsError) console.error("Error productos:", productsError)
-        else setProductsList(productsData || [])
+        else setProductsList(productsData)
       } catch (err) {
         console.error(err)
       } finally {
@@ -86,7 +86,6 @@ export default function Sales() {
       .single()
     if (error) return alert("Error al modificar cliente: " + error.message)
     setClients(clients.map(c => c.id === client.id ? data : c))
-    if (selectedClient?.id === client.id) setSelectedClient(data)
   }
 
   const deleteClient = async (client) => {
@@ -140,7 +139,7 @@ export default function Sales() {
     setTotal(0)
     // Recargar productos
     const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
-    setProductsList(productsData || [])
+    setProductsList(productsData)
   }
 
   if (loading) return <Layout><p>Cargando...</p></Layout>
@@ -232,4 +231,14 @@ export default function Sales() {
           </table>
 
           <h3>Total: ${total}</h3>
-          <button onClick={saveSale} style={{ marginTop: 1
+          <button
+            onClick={saveSale}
+            style={{ marginTop: 10, padding: "8px 16px" }}
+          >
+            Guardar Venta
+          </button>
+        </div>
+      )}
+    </Layout>
+  )
+}
