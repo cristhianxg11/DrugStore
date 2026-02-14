@@ -9,83 +9,112 @@ export default function Home() {
 
   // LOGIN
   const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      alert(error.message)
-      return
+      if (loginError) {
+        alert(loginError.message)
+        return
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession()
+      const userId = sessionData.session.user.id
+
+      // Obtener los negocios del usuario
+      const { data: memberships, error: memberError } = await supabase
+        .from("business_members")
+        .select("business_id")
+        .eq("user_id", userId)
+
+      if (memberError || !memberships || memberships.length === 0) {
+        alert("No se encontró negocio asociado")
+        return
+      }
+
+      // Tomar el primer negocio único
+      const uniqueBusinessIds = [...new Set(memberships.map(m => m.business_id))]
+      const businessId = uniqueBusinessIds[0]
+
+      localStorage.setItem("business_id", businessId)
+      console.log("User ID login:", userId)
+      console.log("Membership result:", memberships)
+
+      router.push("/dashboard")
+    } catch (err) {
+      console.error("Error en login:", err)
+      alert("Ocurrió un error en el login")
     }
-
-    const { data: sessionData } = await supabase.auth.getSession()
-
-    const userId = sessionData.session.user.id
-
-    const { data: membership, error: memberError } = await supabase
-      .from("business_members")
-      .select("business_id")
-      .eq("user_id", userId)
-      //.single()
-      console.log("Membership result:", membership)
-      console.log("Membership error:", memberError)
-    if (memberError) {
-      alert("No se encontró negocio asociado")
-      return
-    }
-
-    localStorage.setItem("business_id", membership.business_id)
-    console.log("User ID login:", userId)
-
-    router.push("/dashboard")
   }
 
   // SIGNUP
   const handleSignup = async () => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
+    try {
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email,
+        password,
+      })
 
-    if (error) {
-      alert(error.message)
-      return
+      if (signupError) {
+        alert(signupError.message)
+        return
+      }
+
+      const userId = data.user.id
+
+      // Verificar si ya existe un negocio para este usuario
+      const { data: existingBusiness } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("owner_id", userId)
+        .single()
+
+      let businessId
+
+      if (!existingBusiness) {
+        // Crear negocio si no existe
+        const { data: newBusiness, error: businessError } = await supabase
+          .from("businesses")
+          .insert([{ name: "Mi Negocio", owner_id: userId }])
+          .select()
+          .single()
+
+        if (businessError) {
+          alert(businessError.message)
+          return
+        }
+
+        businessId = newBusiness.id
+      } else {
+        businessId = existingBusiness.id
+      }
+
+      // Verificar relación en business_members
+      const { data: existingMember } = await supabase
+        .from("business_members")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("business_id", businessId)
+        .single()
+
+      if (!existingMember) {
+        await supabase.from("business_members").insert([
+          {
+            business_id: businessId,
+            user_id: userId,
+            role: "owner",
+          },
+        ])
+      }
+
+      localStorage.setItem("business_id", businessId)
+      alert("Usuario creado correctamente")
+    } catch (err) {
+      console.error("Error en signup:", err)
+      alert("Ocurrió un error al crear el usuario")
     }
-
-    const userId = data.user.id
-
-    // Crear business
-    const { data: newBusiness, error: businessError } = await supabase
-      .from("businesses")
-      .insert([{ name: "Mi Negocio" }])
-      .select()
-      .single()
-
-    if (businessError) {
-      alert(businessError.message)
-      return
-    }
-
-    // Crear relación en business_members
-    const { error: memberError } = await supabase
-      .from("business_members")
-      .insert([
-        {
-          business_id: newBusiness.id,
-          user_id: userId,
-          role: "owner",
-        },
-      ])
-
-    if (memberError) {
-      alert(memberError.message)
-      return
-    }
-
-    localStorage.setItem("business_id", newBusiness.id)
-
-    alert("Usuario creado correctamente")
   }
 
   return (
@@ -114,4 +143,5 @@ export default function Home() {
     </div>
   )
 }
+
 
