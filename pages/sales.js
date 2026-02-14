@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabaseClient"
 import Layout from "../components/Layout"
-import React from "react"
 
 export default function Sales() {
-  const [bId, setBId] = useState(null) // business_id desde localStorage
+  const [bId, setBId] = useState(null)
   const [clients, setClients] = useState([])
   const [clientName, setClientName] = useState("")
   const [selectedClient, setSelectedClient] = useState(null)
@@ -13,10 +12,11 @@ export default function Sales() {
   const [quantity, setQuantity] = useState(1)
   const [saleItems, setSaleItems] = useState([])
   const [total, setTotal] = useState(0)
-  const [salesList, setSalesList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [salesList, setSalesList] = useState([])
+  const [expandedSales, setExpandedSales] = useState({})
+  const [totalVentas, setTotalVentas] = useState(0) // <-- total general
 
-  // --- Obtener business_id solo en cliente ---
   useEffect(() => {
     if (typeof window !== "undefined") {
       const businessId = localStorage.getItem("business_id")
@@ -24,7 +24,6 @@ export default function Sales() {
     }
   }, [])
 
-  // --- Cerrar sesión ---
   const logout = async () => {
     await supabase.auth.signOut()
     localStorage.removeItem("business_id")
@@ -52,7 +51,7 @@ export default function Sales() {
 
         const { data: salesData, error: salesError } = await supabase
           .from("sales")
-          .select(`*, sale_items(*)`)
+          .select("*, sale_items(*)")
           .eq("business_id", bId)
           .order("created_at", { ascending: false })
         if (salesError) console.error("Error ventas:", salesError)
@@ -66,11 +65,17 @@ export default function Sales() {
     fetchData()
   }, [bId])
 
-  // --- Calcular total automáticamente ---
+  // --- Calcular total de la venta actual ---
   useEffect(() => {
     const newTotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
     setTotal(newTotal)
   }, [saleItems])
+
+  // --- Calcular total general de todas las ventas ---
+  useEffect(() => {
+    const totalG = salesList.reduce((acc, s) => acc + s.total, 0)
+    setTotalVentas(totalG)
+  }, [salesList])
 
   // --- Clientes ---
   const addClient = async () => {
@@ -106,7 +111,7 @@ export default function Sales() {
     if (selectedClient?.id === client.id) setSelectedClient(null)
   }
 
-  // --- Productos para venta ---
+  // --- Productos ---
   const addProductToSale = () => {
     if (!selectedProduct) return alert("Seleccione un producto")
     const product = productsList.find(p => p.id === selectedProduct)
@@ -139,7 +144,6 @@ export default function Sales() {
       await supabase.from("sale_items").insert([
         { sale_id: sale.id, product_id: item.id, quantity: item.quantity, price: item.price }
       ])
-      // Reducir stock
       await supabase.from("products").update({ stock: item.stock - item.quantity }).eq("id", item.id)
     }
 
@@ -151,11 +155,7 @@ export default function Sales() {
     // Recargar productos y ventas
     const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
     setProductsList(productsData)
-    const { data: salesData } = await supabase
-      .from("sales")
-      .select(`*, sale_items(*)`)
-      .eq("business_id", bId)
-      .order("created_at", { ascending: false })
+    const { data: salesData } = await supabase.from("sales").select("*, sale_items(*)").eq("business_id", bId).order("created_at", { ascending: false })
     setSalesList(salesData)
   }
 
@@ -172,6 +172,11 @@ export default function Sales() {
         >
           Cerrar sesión
         </button>
+      </div>
+
+      {/* Total general de ventas */}
+      <div style={{ marginBottom: 20 }}>
+        <strong>Total de ventas: ${totalVentas.toLocaleString()}</strong>
       </div>
 
       {/* Clientes */}
@@ -249,75 +254,6 @@ export default function Sales() {
 
           <h3>Total: ${total}</h3>
           <button onClick={saveSale} style={{ marginTop: 10, padding: "8px 16px" }}>Guardar Venta</button>
-        </div>
-      )}
-
-      {/* Ventas recientes */}
-      {salesList.length > 0 && (
-        <div style={{ marginTop: 40 }}>
-          <h3>Ventas recientes</h3>
-          <table border="1" cellPadding="8" style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#f0f0f0" }}>
-                <th>ID Venta</th>
-                <th>Cliente</th>
-                <th>Fecha</th>
-                <th>Total</th>
-                <th>Detalle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {salesList.map((sale, idx) => {
-                const client = clients.find(c => c.id === sale.client_id)
-                const saleDate = new Date(sale.created_at).toLocaleString()
-                const [expanded, setExpanded] = useState(false)
-                return (
-                  <React.Fragment key={sale.id}>
-                    <tr>
-                      <td>{sale.id.substring(0, 8)}...</td>
-                      <td>{client?.name || "Cliente eliminado"}</td>
-                      <td>{saleDate}</td>
-                      <td>${sale.total.toLocaleString()}</td>
-                      <td>
-                        <button
-                          onClick={() => setExpanded(!expanded)}
-                          style={{ padding: "4px 8px", cursor: "pointer" }}
-                        >
-                          {expanded ? "▲ Ocultar" : "▼ Ver detalle"}
-                        </button>
-                      </td>
-                    </tr>
-                    {expanded && sale.sale_items?.length > 0 && (
-                      <tr>
-                        <td colSpan="5">
-                          <table border="1" cellPadding="6" style={{ width: "100%", marginTop: 5 }}>
-                            <thead>
-                              <tr style={{ background: "#e0e0e0" }}>
-                                <th>Producto</th>
-                                <th>Precio</th>
-                                <th>Cantidad</th>
-                                <th>Subtotal</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sale.sale_items.map((item, i) => (
-                                <tr key={i}>
-                                  <td>{item.product_name || "Producto"}</td>
-                                  <td>${item.price.toLocaleString()}</td>
-                                  <td>{item.quantity}</td>
-                                  <td>${(item.price * item.quantity).toLocaleString()}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
       )}
     </Layout>
