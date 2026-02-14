@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { supabase } from "../lib/supabaseClient"
 import Layout from "../components/Layout"
 
@@ -7,6 +7,8 @@ export default function Sales() {
   const [customer, setCustomer] = useState("")
   const [amount, setAmount] = useState("")
   const [loading, setLoading] = useState(true)
+  const chartCustomerRef = useRef(null)
+  const chartTotalRef = useRef(null)
 
   // Obtener ventas
   const fetchSales = async () => {
@@ -21,6 +23,7 @@ export default function Sales() {
       .from("sales")
       .select("*")
       .eq("business_id", bId)
+      .order("created_at", { ascending: true })
 
     if (error) {
       console.error("Error al obtener ventas:", error)
@@ -35,6 +38,11 @@ export default function Sales() {
     const bId = localStorage.getItem("business_id")
     if (!bId) {
       alert("No se encontró negocio asociado")
+      return
+    }
+
+    if (!customer || !amount) {
+      alert("Ingrese cliente y monto")
       return
     }
 
@@ -96,9 +104,87 @@ export default function Sales() {
     window.location.href = "/"
   }
 
+  // Dibujar gráficos con Chart.js
+  const drawCharts = () => {
+    if (!sales.length) return
+
+    // Ventas por cliente
+    const salesByCustomer = {}
+    sales.forEach((s) => {
+      if (!salesByCustomer[s.customer]) salesByCustomer[s.customer] = 0
+      salesByCustomer[s.customer] += s.amount
+    })
+
+    const customerLabels = Object.keys(salesByCustomer)
+    const customerData = Object.values(salesByCustomer)
+
+    if (chartCustomerRef.current) {
+      new window.Chart(chartCustomerRef.current, {
+        type: "bar",
+        data: {
+          labels: customerLabels,
+          datasets: [
+            {
+              label: "Ventas por cliente",
+              data: customerData,
+              backgroundColor: "#1976d2",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+        },
+      })
+    }
+
+    // Ventas totales por día
+    const salesByDate = {}
+    sales.forEach((s) => {
+      const date = new Date(s.created_at).toLocaleDateString()
+      if (!salesByDate[date]) salesByDate[date] = 0
+      salesByDate[date] += s.amount
+    })
+
+    const dateLabels = Object.keys(salesByDate)
+    const dateData = Object.values(salesByDate)
+
+    if (chartTotalRef.current) {
+      new window.Chart(chartTotalRef.current, {
+        type: "line",
+        data: {
+          labels: dateLabels,
+          datasets: [
+            {
+              label: "Ventas totales",
+              data: dateData,
+              borderColor: "#4caf50",
+              backgroundColor: "rgba(76,175,80,0.2)",
+              fill: true,
+              tension: 0.3,
+            },
+          ],
+        },
+        options: { responsive: true },
+      })
+    }
+  }
+
   useEffect(() => {
     fetchSales()
   }, [])
+
+  useEffect(() => {
+    // Cargar Chart.js desde CDN si no existe
+    if (!window.Chart) {
+      const script = document.createElement("script")
+      script.src = "https://cdn.jsdelivr.net/npm/chart.js"
+      script.onload = drawCharts
+      document.body.appendChild(script)
+    } else {
+      drawCharts()
+    }
+  }, [sales])
 
   return (
     <Layout>
@@ -129,6 +215,16 @@ export default function Sales() {
         >
           Agregar
         </button>
+      </div>
+
+      {/* Gráficos */}
+      <div style={{ display: "flex", gap: 20, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 300, background: "white", padding: 20, borderRadius: 8 }}>
+          <canvas ref={chartCustomerRef}></canvas>
+        </div>
+        <div style={{ flex: 1, minWidth: 300, background: "white", padding: 20, borderRadius: 8 }}>
+          <canvas ref={chartTotalRef}></canvas>
+        </div>
       </div>
 
       {/* Tabla de ventas */}
