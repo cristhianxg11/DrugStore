@@ -13,6 +13,7 @@ export default function Sales() {
   const [saleItems, setSaleItems] = useState([])
   const [total, setTotal] = useState(0)
   const [sales, setSales] = useState([])
+  const [totalClientSales, setTotalClientSales] = useState(0)
   const [loading, setLoading] = useState(true)
 
   // --- Obtener business_id solo en cliente ---
@@ -33,46 +34,27 @@ export default function Sales() {
   // --- Cargar clientes y productos ---
   useEffect(() => {
     if (!bId) return
-
     const fetchData = async () => {
       try {
-        // Clientes
         const { data: clientsData, error: clientsError } = await supabase
           .from("clients")
           .select("*")
           .eq("business_id", bId)
         if (clientsError) console.error("Error clientes:", clientsError)
-        else setClients(clientsData ?? [])
+        else setClients(clientsData)
 
-        // Productos
         const { data: productsData, error: productsError } = await supabase
           .from("products")
           .select("*")
           .eq("business_id", bId)
         if (productsError) console.error("Error productos:", productsError)
-        else setProductsList(productsData ?? [])
-
-        // Ventas
-        const { data: salesData, error: salesError } = await supabase
-          .from("sales")
-          .select(`
-            *,
-            sale_items (
-              *,
-              product (*)
-            )
-          `)
-          .eq("business_id", bId)
-          .order("created_at", { ascending: false })
-        if (salesError) console.error("Error ventas:", salesError)
-        else setSales(salesData ?? [])
+        else setProductsList(productsData)
       } catch (err) {
         console.error(err)
       } finally {
         setLoading(false)
       }
     }
-
     fetchData()
   }, [bId])
 
@@ -138,34 +120,32 @@ export default function Sales() {
     if (!selectedClient) return alert("Seleccione un cliente")
     if (saleItems.length === 0) return alert("Agregue productos a la venta")
 
+    const { data: sale, error: saleError } = await supabase
+      .from("sales")
+      .insert([{ client_id: selectedClient.id, business_id: bId, total }])
+      .select()
+      .single()
+    if (saleError) return alert("Error al guardar venta: " + saleError.message)
+
+    for (const item of saleItems) {
+      await supabase.from("sale_items").insert([
+        { sale_id: sale.id, product_id: item.id, quantity: item.quantity, price: item.price }
+      ])
+      await supabase.from("products").update({ stock: item.stock - item.quantity }).eq("id", item.id)
+    }
+
+    alert("Venta guardada correctamente")
+    setSelectedClient(null)
+    setSaleItems([])
+    setTotal(0)
+    fetchSales() // recargar ventas
+  }
+
+  // --- Cargar ventas ---
+  const fetchSales = async () => {
+    if (!bId) return
     try {
-      // Guardar venta
-      const { data: sale, error: saleError } = await supabase
-        .from("sales")
-        .insert([{ client_id: selectedClient.id, business_id: bId, total }])
-        .select()
-        .single()
-      if (saleError) return alert("Error al guardar venta: " + saleError.message)
-
-      // Guardar items
-      for (const item of saleItems) {
-        await supabase.from("sale_items").insert([
-          { sale_id: sale.id, product_id: item.id, quantity: item.quantity, price: item.price }
-        ])
-        // Reducir stock
-        await supabase.from("products").update({ stock: item.stock - item.quantity }).eq("id", item.id)
-      }
-
-      alert("Venta guardada correctamente")
-      setSelectedClient(null)
-      setSaleItems([])
-      setTotal(0)
-
-      // Recargar productos y ventas
-      const { data: productsData } = await supabase.from("products").select("*").eq("business_id", bId)
-      setProductsList(productsData ?? [])
-
-      const { data: salesData } = await supabase
+      const query = supabase
         .from("sales")
         .select(`
           *,
@@ -176,13 +156,27 @@ export default function Sales() {
         `)
         .eq("business_id", bId)
         .order("created_at", { ascending: false })
-      setSales(salesData ?? [])
 
+      if (selectedClient) query.eq("client_id", selectedClient.id)
+
+      const { data: salesData, error: salesError } = await query
+      if (salesError) console.error("Error ventas:", salesError)
+      else setSales(salesData ?? [])
     } catch (err) {
       console.error(err)
-      alert("Error al guardar venta")
     }
   }
+
+  // --- Actualizar ventas al cambiar cliente ---
+  useEffect(() => {
+    fetchSales()
+  }, [selectedClient, bId])
+
+  // --- Calcular total ventas del cliente ---
+  useEffect(() => {
+    const totalVentas = sales.reduce((acc, v) => acc + v.total, 0)
+    setTotalClientSales(totalVentas)
+  }, [sales])
 
   if (loading) return <Layout><p>Cargando...</p></Layout>
   if (!bId) return <Layout><p>No se encontró negocio asociado</p></Layout>
@@ -227,6 +221,7 @@ export default function Sales() {
       {selectedClient && (
         <div style={{ marginBottom: 20 }}>
           <h3>Cliente seleccionado: {selectedClient.name}</h3>
+          <h4>Total ventas cliente: ${totalClientSales}</h4>
 
           {/* Selección de productos */}
           <div>
@@ -242,7 +237,7 @@ export default function Sales() {
               type="number"
               min="1"
               value={quantity}
-              onChange={e => setQuantity(Number(e.target.value) || 1)}
+              onChange={e => setQuantity(parseInt(e.target.value))}
               style={{ width: 60, marginLeft: 5 }}
             />
             <button onClick={addProductToSale} style={{ marginLeft: 5 }}>Agregar producto</button>
@@ -278,18 +273,12 @@ export default function Sales() {
       )}
 
       {/* Ventas recientes */}
-      <div style={{ marginTop: 40 }}>
-        <h2>Ventas recientes</h2>
-        {sales?.length === 0 && <p>No hay ventas registradas</p>}
+      <div style={{ marginTop: 30 }}>
+        <h3>Ventas recientes {selectedClient ? `(Cliente: ${selectedClient.name})` : ""}</h3>
         <ul>
-          {sales?.map(sale => (
+          {sales.map(sale => (
             <li key={sale.id}>
               Venta #{sale.id} - Total: ${sale.total}
-              <ul>
-                {sale.sale_items?.map(item => (
-                  <li key={item.id}>{item.product?.name} x {item.quantity} = ${item.price * item.quantity}</li>
-                ))}
-              </ul>
             </li>
           ))}
         </ul>
