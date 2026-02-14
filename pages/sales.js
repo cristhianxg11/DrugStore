@@ -237,11 +237,30 @@ export default function Sales() {
       {salesList.length > 0 && (
         <div style={{ marginTop: 40 }}>
           <h3>Ventas recientes</h3>
-          <ul>
-            {salesList.map(s => (
-              <li key={s.id}>Venta #{s.id} - Total: ${s.total}</li>
-            ))}
-          </ul>
+          <table border="1" cellPadding="8" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f0f0f0" }}>
+                <th>ID Venta</th>
+                <th>Cliente</th>
+                <th>Fecha</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {salesList.map(s => {
+                const client = clients.find(c => c.id === s.client_id);
+                const saleDate = new Date(s.created_at).toLocaleString();
+                return (
+                  <tr key={s.id}>
+                    <td>{s.id.substring(0, 8)}...</td>
+                    <td>{client?.name || "Cliente eliminado"}</td>
+                    <td>{saleDate}</td>
+                    <td>${s.total.toLocaleString()}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </Layout>
