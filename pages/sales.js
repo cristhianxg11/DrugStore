@@ -194,117 +194,236 @@ export default function Sales() {
   if (loading) return <Layout><p>Cargando...</p></Layout>
   if (!bId) return <Layout><p>No se encontró negocio asociado</p></Layout>
 
-  return (
+    return (
     <Layout>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ marginBottom: 0 }}>Ventas</h1>
-        <button
-          onClick={logout}
-          style={{ padding: "8px 16px", background: "#f44336", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}
-        >
-          Cerrar sesión
-        </button>
-      </div>
-
-      {/* Clientes */}
-      <div style={{ marginBottom: 20 }}>
-        <input
-          placeholder="Nuevo cliente"
-          value={clientName}
-          onChange={e => setClientName(e.target.value)}
-        />
-        <button onClick={addClient} style={{ marginLeft: 10 }}>Agregar Cliente</button>
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <strong>Clientes:</strong>
-        <ul>
-          {clients.map(client => (
-            <li key={client.id} style={{ marginBottom: 5 }}>
-              <button onClick={() => setSelectedClient(client)}>
-                {client.name} {selectedClient?.id === client.id ? "(seleccionado)" : ""}
-              </button>
-              <button onClick={() => updateClient(client)} style={{ marginLeft: 5 }}>✏️</button>
-              <button onClick={() => deleteClient(client)} style={{ marginLeft: 5, color: "red" }}>🗑️</button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {selectedClient && (
-        <div style={{ marginBottom: 20 }}>
-          <h3>Cliente seleccionado: {selectedClient.name}</h3>
-          <p>Total ventas cliente: ${recentSales.reduce((acc, s) => acc + s.total, 0)}</p>
-
-          {/* Selección de productos */}
-          <div>
-            <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
-              <option value="">Seleccione un producto</option>
-              {productsList.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name} - ${p.price} (Stock: {p.stock})
-                </option>
-              ))}
-            </select>
+      <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
+        
+        {/* Header */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 30
+        }}>
+          <h1 style={{ fontSize: 28, fontWeight: "bold" }}>Panel de Ventas</h1>
+  
+          <button
+            onClick={logout}
+            style={{
+              padding: "10px 18px",
+              background: "#e53935",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontWeight: "bold"
+            }}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+  
+        {/* Clientes */}
+        <div style={{
+          background: "white",
+          padding: 20,
+          borderRadius: 12,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          marginBottom: 30
+        }}>
+          <h2 style={{ marginBottom: 15 }}>Clientes</h2>
+  
+          <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
             <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={e => setQuantity(parseInt(e.target.value))}
-              style={{ width: 60, marginLeft: 5 }}
+              placeholder="Nuevo cliente"
+              value={clientName}
+              onChange={e => setClientName(e.target.value)}
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #ddd"
+              }}
             />
-            <button onClick={addProductToSale} style={{ marginLeft: 5 }}>Agregar producto</button>
+            <button
+              onClick={addClient}
+              style={{
+                padding: "10px 16px",
+                background: "#4caf50",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer"
+              }}
+            >
+              Agregar
+            </button>
           </div>
-
-          {/* Lista de productos agregados */}
-          <table border="1" cellPadding="10" style={{ marginTop: 10, width: "100%" }}>
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Precio</th>
-                <th>Cantidad</th>
-                <th>Subtotal</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {saleItems.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.name}</td>
-                  <td>${item.price}</td>
-                  <td>{item.quantity}</td>
-                  <td>${item.price * item.quantity}</td>
-                  <td><button onClick={() => removeSaleItem(index)}>Eliminar</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <h3>Total: ${total}</h3>
-          <button onClick={saveSale} style={{ marginTop: 10, padding: "8px 16px" }}>Guardar Venta</button>
-
-          {/* Ventas recientes */}
-          <div style={{ marginTop: 20 }}>
-            <h3>Ventas recientes (Cliente: {selectedClient.name})</h3>
-            {recentSales.length === 0 ? <p>No hay ventas.</p> :
-              <ul>
-                {recentSales.map(sale => (
-                  <li key={sale.id}>
-                    Venta #{sale.id} - Total: ${sale.total}
-                    {sale.sale_items && sale.sale_items.length > 0 && (
-                      <ul>
-                        {sale.sale_items.map((item, i) => (
-                          <li key={i}>{item.product?.name} x {item.quantity} - ${item.price}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            }
+  
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {clients.map(client => (
+              <div
+                key={client.id}
+                style={{
+                  padding: 10,
+                  borderRadius: 8,
+                  background: selectedClient?.id === client.id ? "#e3f2fd" : "#f5f5f5",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5
+                }}
+              >
+                <span onClick={() => setSelectedClient(client)}>
+                  {client.name}
+                </span>
+                <button onClick={() => updateClient(client)}>✏️</button>
+                <button onClick={() => deleteClient(client)} style={{ color: "red" }}>🗑️</button>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+  
+        {selectedClient && (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gap: 30
+          }}>
+  
+            {/* Venta */}
+            <div style={{
+              background: "white",
+              padding: 20,
+              borderRadius: 12,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
+            }}>
+              <h2>Registrar Venta</h2>
+  
+              <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
+                <select
+                  value={selectedProduct}
+                  onChange={e => setSelectedProduct(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ddd"
+                  }}
+                >
+                  <option value="">Seleccione un producto</option>
+                  {productsList.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} - ${p.price} (Stock: {p.stock})
+                    </option>
+                  ))}
+                </select>
+  
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={e => setQuantity(parseInt(e.target.value))}
+                  style={{
+                    width: 80,
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ddd"
+                  }}
+                />
+  
+                <button
+                  onClick={addProductToSale}
+                  style={{
+                    padding: "10px 16px",
+                    background: "#1976d2",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 8,
+                    cursor: "pointer"
+                  }}
+                >
+                  Agregar
+                </button>
+              </div>
+  
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f5f5f5" }}>
+                    <th style={{ padding: 10 }}>Producto</th>
+                    <th>Precio</th>
+                    <th>Cantidad</th>
+                    <th>Subtotal</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {saleItems.map((item, index) => (
+                    <tr key={index}>
+                      <td style={{ padding: 10 }}>{item.name}</td>
+                      <td>${item.price}</td>
+                      <td>{item.quantity}</td>
+                      <td>${item.price * item.quantity}</td>
+                      <td>
+                        <button onClick={() => removeSaleItem(index)}>❌</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+  
+              <div style={{
+                marginTop: 20,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <h3>Total: ${total}</h3>
+                <button
+                  onClick={saveSale}
+                  style={{
+                    padding: "12px 20px",
+                    background: "#4caf50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 10,
+                    fontWeight: "bold",
+                    cursor: "pointer"
+                  }}
+                >
+                  Guardar Venta
+                </button>
+              </div>
+            </div>
+  
+            {/* Historial */}
+            <div style={{
+              background: "white",
+              padding: 20,
+              borderRadius: 12,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
+            }}>
+              <h2>Historial</h2>
+  
+              {recentSales.length === 0 ? (
+                <p>No hay ventas.</p>
+              ) : (
+                recentSales.map(sale => (
+                  <div key={sale.id} style={{
+                    marginBottom: 15,
+                    padding: 10,
+                    background: "#f9f9f9",
+                    borderRadius: 8
+                  }}>
+                    <strong>Total: ${sale.total}</strong>
+                  </div>
+                ))
+              )}
+            </div>
+  
+          </div>
+        )}
+      </div>
     </Layout>
   )
 }
