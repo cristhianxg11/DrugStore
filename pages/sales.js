@@ -34,7 +34,10 @@ export default function Sales() {
         return
       }
   
+      console.log("User ID:", userId)
       setBId(membership.business_id)
+      console.log("Business ID:", membership.business_id)
+
     }
   
     fetchBusinessId()
