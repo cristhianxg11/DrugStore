@@ -17,11 +17,29 @@ export default function Sales() {
 
   // --- Obtener business_id ---
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const businessId = localStorage.getItem("business_id")
-      setBId(businessId)
+    const fetchBusinessId = async () => {
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData?.user?.id
+  
+      if (!userId) return
+  
+      const { data: membership, error } = await supabase
+        .from("business_members")
+        .select("business_id")
+        .eq("user_id", userId)
+        .single()
+  
+      if (error) {
+        console.error("Error obteniendo business_id:", error)
+        return
+      }
+  
+      setBId(membership.business_id)
     }
+  
+    fetchBusinessId()
   }, [])
+
 
   // --- Cerrar sesión ---
   const logout = async () => {
