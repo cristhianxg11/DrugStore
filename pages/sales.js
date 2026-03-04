@@ -16,34 +16,59 @@ export default function Sales() {
   const [recentSales, setRecentSales] = useState([])
 
   // --- Obtener business_id ---
+  // --- Obtener business_id ---
   useEffect(() => {
     const fetchBusinessId = async () => {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData?.user?.id
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser()
   
-      if (!userId) return
+        if (userError) {
+          console.error("Error user:", userError)
+          setLoading(false)
+          return
+        }
   
-      const { data: membership, error } = await supabase
-        .from("business_members")
-        .select("business_id")
-        .eq("user_id", userId)
-        .single()
+        const userId = userData?.user?.id
+        if (!userId) {
+          setLoading(false)
+          return
+        }
   
-      if (error) {
-        console.error("Error obteniendo business_id:", error)
-        return
+        const { data: memberships, error: memberError } = await supabase
+          .from("business_members")
+          .select("business_id")
+          .eq("user_id", userId)
+  
+        if (memberError) {
+          console.error("Error membership:", memberError)
+          setLoading(false)
+          return
+        }
+  
+        if (!memberships || memberships.length === 0) {
+          console.error("No se encontró negocio asociado")
+          setLoading(false)
+          return
+        }
+  
+        // Tomamos el primer negocio
+        setBId(memberships[0].business_id)
+  
+      } catch (err) {
+        console.error(err)
+        setLoading(false)
       }
-  
-      console.log("User ID:", userId)
-      setBId(membership.business_id)
-      console.log("Business ID:", membership.business_id)
-
     }
   
     fetchBusinessId()
   }, [])
-
-
+  
+  useEffect(() => {
+    if (bId) {
+      setLoading(false)
+    }
+  }, [bId])
+  
   // --- Cerrar sesión ---
   const logout = async () => {
     await supabase.auth.signOut()
